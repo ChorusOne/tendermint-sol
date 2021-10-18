@@ -1,0 +1,24 @@
+{
+  "name": "@chorusone/tendermint",
+  "description": "Tendermint library for Solidity",
+  "version": "4.3.2",
+  "files": [
+    "**/*.sol",
+    "/build/contracts/*.json",
+    "!/mocks/**/*"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChorusOne/tendermint-sol.git"
+  },
+  "keywords": [
+    "tendermint",
+    "solidity"
+  ],
+  "author": "Mateusz Kaczanowski <mateusz@chorus.one>",
+  "license": "TBD",
+  "bugs": {
+    "url": "https://github.com/ChrousOne/tendermint-sol/issues"
+  },
+  "homepage": "https://chorus.one"
+}
