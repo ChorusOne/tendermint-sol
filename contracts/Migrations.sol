@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: MIT
-pragma solidity >=0.4.25 <0.7.0;
+// SPDX-License-Identifier: TBD
+pragma solidity >=0.4.25 <=0.8.2;
 
 contract Migrations {
   address public owner;
