@@ -27,12 +27,12 @@ library Bytes {
         return tempUint;
     }
 
-	function toAddress(bytes memory _bytes) internal pure returns (address addr) {
-		// convert last 20 bytes of keccak hash (bytes32) to address
-		bytes32 hash = keccak256(_bytes);
-		assembly {
-			mstore(0, hash)
-			addr := mload(0)
-		}    
-	}
+    function toAddress(bytes memory _bytes) internal pure returns (address addr) {
+        // convert last 20 bytes of keccak hash (bytes32) to address
+        bytes32 hash = keccak256(_bytes);
+        assembly {
+            mstore(0, hash)
+            addr := mload(0)
+        }
+    }
 }

@@ -1,4 +1,4 @@
-.PHONY: clean-protoc build-protoc proto sol-lint js-lint
+.PHONY: clean-protoc build-protoc proto sol-lint js-lint sol-format
 
 clean-protoc:
 	rm -rf ./solidity-protobuf 2>/dev/null
@@ -14,3 +14,6 @@ sol-lint:
 
 js-lint:
 	eslint test/utlis *.js
+
+sol-format:
+	npx prettier --write 'contracts/{utils,mocks}/*.sol' 'contracts/proto/{Encoder.sol,TendermintHelper.sol}'
