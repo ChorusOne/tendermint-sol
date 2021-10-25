@@ -1,4 +1,4 @@
-.PHONY: clean-protoc build-protoc proto sol-lint js-lint sol-format
+.PHONY: clean-protoc build-protoc proto sol-lint js-lint sol-format import-ibc
 
 clean-protoc:
 	rm -rf ./solidity-protobuf 2>/dev/null
@@ -17,3 +17,6 @@ js-lint:
 
 sol-format:
 	npx prettier --write 'contracts/{utils,mocks}/*.sol' 'contracts/proto/{Encoder.sol,TendermintHelper.sol}'
+
+import-ibc:
+	./scripts/import_ibc.sh
