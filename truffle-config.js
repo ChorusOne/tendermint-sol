@@ -1,6 +1,6 @@
-const HDWalletProvider = require('@truffle/hdwallet-provider');
+const HDWalletProvider = require('@truffle/hdwallet-provider')
 
-const mnemonic = "math razor capable expose worth grape metal sunset metal sudden usage scheme";
+const mnemonic = 'math razor capable expose worth grape metal sunset metal sudden usage scheme'
 
 module.exports = {
   /**
@@ -15,26 +15,31 @@ module.exports = {
 
   networks: {
     celo: {
-      host: "127.0.0.1",
+      host: '127.0.0.1',
       port: 8545,
-      network_id: "*",
+      network_id: '*',
       networkCheckTimeout: 100000000,
       timeoutBlocks: 200,
       websocket: true,
       gas: 19000000,
       provider: () =>
-       new HDWalletProvider(mnemonic, "ws://127.0.0.1:3334", 0, 10)
-     },
+        new HDWalletProvider(mnemonic, 'ws://127.0.0.1:3334', 0, 10)
+    },
+    ganache: {
+      host: 'localhost',
+      port: 8545,
+      network_id: '*'
+    }
   },
   compilers: {
     solc: {
-      version: "0.8.2",
+      version: '0.8.2',
       settings: {
-       optimizer: {
-         enabled: true,
-         runs: 2
-       },
+        optimizer: {
+          enabled: true,
+          runs: 2
+        }
       }
     }
   }
-};
+}

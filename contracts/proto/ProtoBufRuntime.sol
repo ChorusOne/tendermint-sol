@@ -122,7 +122,24 @@ library ProtoBufRuntime {
     }
 
     // Copy remaining bytes
-    uint256 mask = 256**(WORD_LENGTH - len) - 1;
+    // TODO: There are two changes in solidity 0.8.x
+    // 1. exponential literal handling
+    // 2. overflow/underflow check enabled by default
+    //
+    // https://docs.soliditylang.org/en/latest/080-breaking-changes.html#how-to-update-your-code
+    //
+    // Here we have underflow / overflow and I don't yet know why. I tested:
+    //    uint256 WORD_LENGTH = 32;
+    //    uint256 len = 20;
+    //    uint256 mask =  256**(WORD_LENGTH - len) - 1;
+    //    uint256 mask2 = (256**(5)) - 1;
+    //    uint256 mask3 = 256**((5) - 1);
+    //
+    // all of them seem to return the same value, so I believe this is the overflow issue.
+    //
+    // To mitigate the issue I wrapped this in unchecked { }
+    uint256 mask;
+    unchecked { mask =  256**(WORD_LENGTH - len) - 1; }
     assembly {
       let srcpart := and(mload(src), not(mask))
       let destpart := and(mload(dest), mask)
