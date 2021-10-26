@@ -2,6 +2,18 @@ const HDWalletProvider = require('@truffle/hdwallet-provider')
 
 const mnemonic = 'math razor capable expose worth grape metal sunset metal sudden usage scheme'
 
+const celo = {
+    host: '127.0.0.1',
+    port: 8545,
+    network_id: '*',
+    networkCheckTimeout: 100000000,
+    timeoutBlocks: 200,
+    websocket: true,
+    gas: 19000000,
+    provider: () =>
+    new HDWalletProvider(mnemonic, 'ws://127.0.0.1:3334', 0, 10)
+};
+
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
@@ -14,17 +26,8 @@ module.exports = {
    */
 
   networks: {
-    celo: {
-      host: '127.0.0.1',
-      port: 8545,
-      network_id: '*',
-      networkCheckTimeout: 100000000,
-      timeoutBlocks: 200,
-      websocket: true,
-      gas: 19000000,
-      provider: () =>
-        new HDWalletProvider(mnemonic, 'ws://127.0.0.1:3334', 0, 10)
-    },
+    celo: celo,
+    tests: celo,
     ganache: {
       host: 'localhost',
       port: 8545,

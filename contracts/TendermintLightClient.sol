@@ -17,7 +17,7 @@ import "./utils/Bytes.sol";
 import "./utils/Tendermint.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-contract TendermintClient is IClient {
+contract TendermintLightClient is IClient {
     using Bytes for bytes;
     using TendermintHelper for LightBlock.Data;
     using TendermintHelper for ConsensusState.Data;
@@ -108,7 +108,8 @@ contract TendermintClient is IClient {
         (clientState, ok) = unmarshalClientState(clientStateBytes);
         require(ok, "LC: client state is invalid");
 
-        checkValidity(clientState, trustedConsensusState, lightBlock, Duration.Data({Seconds: SafeCast.toInt64(int256(block.timestamp * 1000 * 1000 * 1000)), nanos: 0})); // TODO: unsafe downcast to int64
+        // TODO: timestamp * 1000 * 1000 * 1000??
+        checkValidity(clientState, trustedConsensusState, lightBlock, Duration.Data({Seconds: SafeCast.toInt64(int256(block.timestamp)), nanos: 0})); // TODO: unsafe downcast to int64
 
 	    // Header is different from existing consensus state and also valid, so freeze the client and return
 	    if (conflictingHeader) {
