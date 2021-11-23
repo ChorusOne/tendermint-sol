@@ -1,13 +1,16 @@
-use web3::{
-    contract::Options,
-    types::{H256, U256},
-};
-
 mod consts;
 mod eth;
 mod proto;
 mod types;
-use web3::contract::tokens::Detokenize;
+
+extern crate clap;
+use clap::{App, Arg, SubCommand};
+
+use web3::{
+    contract::tokens::Detokenize,
+    contract::Options,
+    types::{H256, U256},
+};
 
 use ethabi::Token;
 use ibc;
@@ -102,6 +105,8 @@ async fn handle_header<'a, T: web3::Transport>(
     header: proto::tendermint::light::LightBlock,
     cnt: u64,
     non_adjecent_test: bool,
+    celo_usd_price: f64,
+    celo_gas_price: f64,
 ) -> Result<proto::tendermint::light::LightBlock, Box<dyn Error>> {
     let trusted_height = match trusted_header.clone() {
         Some(trusted_header) => trusted_header.signed_header.unwrap().header.unwrap().height,
@@ -134,7 +139,7 @@ async fn handle_header<'a, T: web3::Transport>(
     );
     let _tendermint_contract = eth::load_contract(
         &transport,
-        "../../build/contracts/TendermintClient.json",
+        "../../build/contracts/TendermintLightClient.json",
         TENDERMINT_LIGHT_CLIENT_ADDRESS,
     );
 
@@ -157,15 +162,24 @@ async fn handle_header<'a, T: web3::Transport>(
             Some(status) => {
                 if status == web3::types::U64([1 as u64]) {
                     println!(
-                        "[1][register-client] New client: {} registered",
+                        "[1][register-client][] New client: {} registered",
                         "07-tendermint"
                     );
                 } else {
                     println!(
-                        "[1][register-client] Warning client: {} already registered",
+                        "[1][register-client][] Warning client: {} already registered",
                         "07-tendermint"
                     );
                 }
+                calculate_and_display_fee(
+                    "[1][register-client][]",
+                    "".to_string(),
+                    &transport,
+                    &register_client_reciept,
+                    celo_usd_price,
+                    celo_gas_price,
+                )
+                .await;
             }
             None => panic!("unkown outcome - cannot determine if client is registered already?"),
         };
@@ -243,15 +257,24 @@ async fn handle_header<'a, T: web3::Transport>(
             Some(status) => {
                 if status == web3::types::U64([1 as u64]) {
                     println!(
-                        "[2][create-client] new client instance: {} registered",
+                        "[2][create-client][] new client instance: {} registered",
                         "07-tendermint"
                     );
                 } else {
                     println!(
-                        "[2][create-client] failed to create new client instance: {}",
+                        "[2][create-client][] failed to create new client instance: {}",
                         "07-tendermint"
                     );
                 }
+                calculate_and_display_fee(
+                    "[2][create-client]",
+                    "".to_string(),
+                    &transport,
+                    &create_client_reciept,
+                    celo_usd_price,
+                    celo_gas_price,
+                )
+                .await;
             }
             None => panic!("unkown outcome - dunno "),
         };
@@ -320,6 +343,15 @@ async fn handle_header<'a, T: web3::Transport>(
                         client_id, update_client_reciept.transaction_hash
                     );
                 }
+                calculate_and_display_fee(
+                    "[3][update-client]",
+                    client_id,
+                    &transport,
+                    &update_client_reciept,
+                    celo_usd_price,
+                    celo_gas_price,
+                )
+                .await;
             }
             None => panic!("unkown outcome - dunno "),
         };
@@ -328,12 +360,91 @@ async fn handle_header<'a, T: web3::Transport>(
     }
 }
 
+async fn calculate_and_display_fee<'a, T: web3::Transport>(
+    prefix: &'a str,
+    client_id: String,
+    transport: &T,
+    reciept: &web3::types::TransactionReceipt,
+    celo_usd_price: f64,
+    celo_gas_price: f64,
+) {
+    let web3 = web3::Web3::new(&transport);
+    let tx: web3::types::Transaction = web3
+        .eth()
+        .transaction(web3::types::TransactionId::Hash(reciept.transaction_hash))
+        .await
+        .unwrap()
+        .unwrap();
+
+    let gas_price = if tx.gas_price.as_u64() == 0 {
+        celo_gas_price
+    } else {
+        tx.gas_price.as_u64() as f64
+    }; // wei
+    let gas_used = reciept.gas_used.unwrap().as_u64();
+    let fee = (gas_price * gas_used as f64) / 1e18;
+    let fee_usd = celo_usd_price * fee;
+
+    println!(
+        "{}[{}] gas: {}, gas_used: {}; gas_price: {}; fee(CELO): {}; fee(USD): {}",
+        prefix, client_id, tx.gas, gas_used, gas_price, fee, fee_usd
+    );
+}
+
 #[tokio::main]
 async fn main() -> web3::Result<()> {
-    let args: Vec<String> = std::env::args().collect();
-    let max_headers: u64 = args[1].parse().unwrap();
-    let non_adjecent_test: bool = args[2].parse().unwrap();
-    let save_header: bool = args[3].parse().unwrap();
+    let matches = App::new("Tendermint Light Client demo program")
+		.version("1.0")
+		.arg(Arg::with_name("max-headers")
+			.long("max-headers")
+			.value_name("NUM")
+			.default_value("3")
+			.required(true)
+			.help("Maximum amount of tendermint headers to be processed")
+			.takes_value(true))
+		.arg(Arg::with_name("celo-gas-price")
+			.long("celo-gas-price")
+			.value_name("NUM")
+			.default_value("0")
+			.required(true)
+			.help("Celo gas price in wei (see: https://stats.celo.org/)")
+			.takes_value(true))
+		.arg(Arg::with_name("celo-usd-price")
+			.long("celo-usd-price")
+			.value_name("NUM")
+			.default_value("0")
+			.required(true)
+			.help("Celo usd price (see: http://usdt.rate.sx/1CELO)")
+			.takes_value(true))
+		.arg(Arg::with_name("non-adjecent-mode")
+			.long("non-adjecent-mode")
+			.short("n")
+			.help("If present, the program skips 2nd header to verify that non-adjecent mode works")
+			.takes_value(false))
+		.arg(Arg::with_name("save")
+			.long("save")
+			.short("s")
+			.help("If present, block headers and validator set are saved to file")
+			.takes_value(false))
+		.get_matches();
+
+    let max_headers = matches
+        .value_of("max-headers")
+        .unwrap()
+        .parse::<u64>()
+        .unwrap();
+    let non_adjecent_test = matches.occurrences_of("non-adjecent-mode") > 0;
+    let save_header = matches.occurrences_of("save") > 0;
+    let celo_gas_price = matches
+        .value_of("celo-gas-price")
+        .unwrap()
+        .parse::<f64>()
+        .unwrap();
+    let celo_usd_price = matches
+        .value_of("celo-usd-price")
+        .unwrap()
+        .parse::<f64>()
+        .unwrap();
 
     // Setup eth client
     let transport = web3::transports::Http::new("http://localhost:8545").unwrap();
@@ -371,6 +482,8 @@ async fn main() -> web3::Result<()> {
                 response.unwrap(),
                 cnt,
                 non_adjecent_test,
+                celo_usd_price,
+                celo_gas_price,
             )
             .await
             .unwrap(),
