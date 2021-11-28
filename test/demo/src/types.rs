@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::fmt;
 use web3::types::H160;
+use std::convert::TryInto;
 
 #[derive(Debug)]
 pub struct SimpleError {
@@ -48,10 +49,11 @@ pub fn to_block_id(
 pub fn to_timestamp(
     timestamp: tendermint::time::Time,
 ) -> crate::proto::tendermint::light::Timestamp {
-    let proto_time = prost_types::Timestamp::from(std::time::SystemTime::from(timestamp));
+    let nanos = timestamp.0.timestamp_subsec_nanos().try_into().unwrap_or(0);
+    let seconds = timestamp.0.timestamp();
     crate::proto::tendermint::light::Timestamp {
-        seconds: proto_time.seconds,
-        nanos: proto_time.nanos,
+        seconds: seconds,
+        nanos: nanos
     }
 }
 
@@ -68,7 +70,7 @@ pub fn to_sig(
     sig: tendermint::block::commit_sig::CommitSig,
 ) -> crate::proto::tendermint::light::CommitSig {
     match sig {
-        tendermint::block::commit_sig::CommitSig::BlockIDFlagAbsent => {
+        tendermint::block::commit_sig::CommitSig::BlockIdFlagAbsent => {
             crate::proto::tendermint::light::CommitSig {
                 block_id_flag: crate::proto::tendermint::light::BlockIdFlag::Absent.into(),
                 validator_address: Vec::new(),
@@ -76,7 +78,7 @@ pub fn to_sig(
                 signature: Vec::new(),
             }
         }
-        tendermint::block::commit_sig::CommitSig::BlockIDFlagNil {
+        tendermint::block::commit_sig::CommitSig::BlockIdFlagNil {
             validator_address,
             timestamp,
             signature,
@@ -84,9 +86,9 @@ pub fn to_sig(
             block_id_flag: crate::proto::tendermint::light::BlockIdFlag::Nil.into(),
             validator_address: validator_address.into(),
             timestamp: Some(to_timestamp(timestamp)),
-            signature: signature.into(),
+            signature: signature.unwrap().into(),
         },
-        tendermint::block::commit_sig::CommitSig::BlockIDFlagCommit {
+        tendermint::block::commit_sig::CommitSig::BlockIdFlagCommit {
             validator_address,
             timestamp,
             signature,
@@ -94,7 +96,7 @@ pub fn to_sig(
             block_id_flag: crate::proto::tendermint::light::BlockIdFlag::Commit.into(),
             validator_address: validator_address.into(),
             timestamp: Some(to_timestamp(timestamp)),
-            signature: signature.into(),
+            signature: signature.unwrap().into(),
         },
     }
 }
@@ -143,14 +145,14 @@ pub fn to_validator_set(
     crate::proto::tendermint::light::ValidatorSet {
         validators: validators
             .iter()
-            .map(|&validator| crate::proto::tendermint::light::Validator {
+            .map(|validator| crate::proto::tendermint::light::Validator {
                 address: validator.address.into(),
                 pub_key: Some(crate::proto::tendermint::light::PublicKey {
                     sum: Some(crate::proto::tendermint::light::public_key::Sum::Ed25519(
-                        validator.pub_key.as_bytes().to_vec(),
+                        validator.pub_key.to_bytes().to_vec(),
                     )),
                 }),
-                voting_power: validator.voting_power.into(),
+                voting_power: validator.power.into(),
                 proposer_priority: validator.proposer_priority.into(),
             })
             .collect(),

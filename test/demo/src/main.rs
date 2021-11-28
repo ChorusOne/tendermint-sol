@@ -4,8 +4,9 @@ mod proto;
 mod types;
 
 extern crate clap;
-use clap::{App, Arg, SubCommand};
+use clap::{App, Arg};
 
+use tokio::time::{sleep, Duration};
 use web3::{
     contract::tokens::Detokenize,
     contract::Options,
@@ -20,91 +21,89 @@ use std::io::Write;
 use std::str::FromStr;
 
 use futures::try_join;
-use futures::StreamExt;
 use std::error::Error;
-use tendermint_rpc::query::EventType;
-use tendermint_rpc::{Client, SubscriptionClient, WebSocketClient};
+use tendermint_rpc::{Client, HttpClient};
 
 use consts::{IBC_HANDLER_ADDRESS, IBC_HOST_ADDRESS, TENDERMINT_LIGHT_CLIENT_ADDRESS};
 
-async fn recv_data(
-    response: Result<tendermint_rpc::event::Event, tendermint_rpc::Error>,
-    client: &mut WebSocketClient,
+async fn recv_data_httpclient(
+    block: &tendermint::block::Block,
+    client: &mut HttpClient,
     _cnt: u64,
     save_header: bool,
 ) -> Result<proto::tendermint::light::LightBlock, Box<dyn Error>> {
-    let maybe_result = response;
-    if maybe_result.is_err() {
-        return Err(types::SimpleError::new("unable to get events from socket").into());
+    let commit_future = client.commit(block.header.height);
+    let validator_set_future = client.validators(block.header.height, tendermint_rpc::Paging::All);
+
+    let (signed_header_response, validator_set_response) =
+        try_join!(commit_future, validator_set_future)?;
+
+    recv_data(
+        block,
+        signed_header_response,
+        validator_set_response,
+        _cnt,
+        save_header,
+    )
+    .await
+}
+
+async fn recv_data(
+    block: &tendermint::block::Block,
+    signed_header_response: tendermint_rpc::endpoint::commit::Response,
+    validator_set_response: tendermint_rpc::endpoint::validators::Response,
+    _cnt: u64,
+    save_header: bool,
+) -> Result<proto::tendermint::light::LightBlock, Box<dyn Error>> {
+    if save_header {
+        let path = format!("./header.{}.signed_header.json", block.header.height);
+        let mut output = File::create(path)?;
+        let data = serde_json::to_vec_pretty(&signed_header_response.signed_header)?;
+        output.write_all(&data).unwrap();
+
+        let path = format!("./header.{}.validator_set.json", block.header.height);
+        let mut output = File::create(path)?;
+        let data = serde_json::to_vec_pretty(&validator_set_response.validators)?;
+        output.write_all(&data).unwrap();
     }
-    let result = maybe_result.unwrap();
-    match result.data {
-        tendermint_rpc::event::EventData::NewBlock {
-            block,
-            result_begin_block: _,
-            result_end_block: _,
-        } => {
-            if block.is_none() {
-                return Err(types::SimpleError::new("e.block".into()).into());
-            }
-            let block = block.unwrap();
-            let commit_future = client.commit(block.header.height);
-            let validator_set_future = client.validators(block.header.height);
-            let (signed_header_response, validator_set_response) =
-                try_join!(commit_future, validator_set_future)?;
 
-            if save_header {
-                let path = format!("./header.{}.signed_header.json", block.header.height);
-                let mut output = File::create(path)?;
-                let data = serde_json::to_vec_pretty(&signed_header_response.signed_header)?;
-                output.write_all(&data).unwrap();
+    /* READ FROM FILE
+    let mut input = String::new();
+    let mut input2 = String::new();
+    if _cnt == 0 {
+    let mut ifile = File::open("./header.1358.signed_header.json").expect("unable to open file");
+    ifile.read_to_string(&mut input).expect("unable to read");
 
-                let path = format!("./header.{}.validator_set.json", block.header.height);
-                let mut output = File::create(path)?;
-                let data = serde_json::to_vec_pretty(&validator_set_response.validators)?;
-                output.write_all(&data).unwrap();
-            }
+    let mut ifile = File::open("./header.1358.validator_set.json").expect("unable to open file");
+    ifile.read_to_string(&mut input2).expect("unable to read");
 
-            /* READ FROM FILE
-            let mut input = String::new();
-            let mut input2 = String::new();
-            if _cnt == 0 {
-                let mut ifile = File::open("./header.1358.signed_header.json").expect("unable to open file");
-                ifile.read_to_string(&mut input).expect("unable to read");
+    } else {
+    let mut ifile = File::open("./header.1359.signed_header.json").expect("unable to open file");
+    ifile.read_to_string(&mut input).expect("unable to read");
 
-                let mut ifile = File::open("./header.1358.validator_set.json").expect("unable to open file");
-                ifile.read_to_string(&mut input2).expect("unable to read");
-
-            } else {
-                let mut ifile = File::open("./header.1359.signed_header.json").expect("unable to open file");
-                ifile.read_to_string(&mut input).expect("unable to read");
-
-                let mut ifile = File::open("./header.1359.validator_set.json").expect("unable to open file");
-                ifile.read_to_string(&mut input2).expect("unable to read");
-            }
-
-            let sh = types::to_signed_header(serde_json::from_str(input.as_str()).unwrap());
-            let vs = types::to_validator_set(serde_json::from_str(input2.as_str()).unwrap());
-            */
-
-            let sh = types::to_signed_header(signed_header_response.signed_header);
-            let vs = types::to_validator_set(validator_set_response.validators);
-
-            let header = types::to_light_block(sh, vs);
-
-            Ok(header)
-        }
-        _ => Err(types::SimpleError::new("unexpected error").into()),
+    let mut ifile = File::open("./header.1359.validator_set.json").expect("unable to open file");
+    ifile.read_to_string(&mut input2).expect("unable to read");
     }
+
+    let sh = types::to_signed_header(serde_json::from_str(input.as_str()).unwrap());
+    let vs = types::to_validator_set(serde_json::from_str(input2.as_str()).unwrap());
+    */
+
+    let sh = types::to_signed_header(signed_header_response.signed_header);
+    let vs = types::to_validator_set(validator_set_response.validators);
+
+    let header = types::to_light_block(sh, vs);
+
+    Ok(header)
 }
 
 async fn handle_header<'a, T: web3::Transport>(
-    client: &mut WebSocketClient,
     transport: &'a T,
     trusted_header: Option<proto::tendermint::light::LightBlock>,
     header: proto::tendermint::light::LightBlock,
     cnt: u64,
     non_adjecent_test: bool,
+    gas: u64,
     celo_usd_price: f64,
     celo_gas_price: f64,
 ) -> Result<proto::tendermint::light::LightBlock, Box<dyn Error>> {
@@ -124,7 +123,7 @@ async fn handle_header<'a, T: web3::Transport>(
     //let sender = to_addr("0xa89f47c6b463f74d87572b058427da0a13ec5425".to_string());
     let mut options = Options::default();
     options.gas_price = Some(U256::from("0"));
-    options.gas = Some(U256::from(9000000 as i64));
+    options.gas = Some(U256::from(gas as i64));
 
     // test
     let handler_contract = eth::load_contract(
@@ -301,13 +300,10 @@ async fn handle_header<'a, T: web3::Transport>(
         //.abci_query(Some(path), client_state_path.into_bytes(), Some(tendermint::block::Height::from(trusted_height as u32)), true)
         //.await.unwrap();
 
-        //println!("RESP: {:?}", abci_response.value);
-
         let trusted = trusted_header.unwrap();
         let tm_header = proto::tendermint::light::TmHeader {
             signed_header: header.signed_header.clone(),
             validator_set: header.validator_set.clone(),
-
             trusted_height: trusted_height,
             trusted_validators: trusted.validator_set.clone(),
         };
@@ -416,6 +412,27 @@ async fn main() -> web3::Result<()> {
 			.required(true)
 			.help("Celo usd price (see: http://usdt.rate.sx/1CELO)")
 			.takes_value(true))
+		.arg(Arg::with_name("celo-url")
+			.long("celo-url")
+			.value_name("URL")
+			.default_value("http://localhost:8545")
+			.required(true)
+			.help("Celo RPC endpoint")
+			.takes_value(true))
+		.arg(Arg::with_name("gas")
+			.long("gas")
+			.value_name("GAS")
+			.default_value("20000000")
+			.required(true)
+			.help("Maximum tx gas")
+			.takes_value(true))
+		.arg(Arg::with_name("tendermint-url")
+			.long("tendermint-url")
+			.value_name("URL")
+			.default_value("http://localhost:26657")
+			.required(true)
+			.help("Tendermint RPC endpoint")
+			.takes_value(true))
 		.arg(Arg::with_name("non-adjecent-mode")
 			.long("non-adjecent-mode")
 			.short("n")
@@ -435,6 +452,13 @@ async fn main() -> web3::Result<()> {
         .unwrap();
     let non_adjecent_test = matches.occurrences_of("non-adjecent-mode") > 0;
     let save_header = matches.occurrences_of("save") > 0;
+    let tendermint_url = matches.value_of("tendermint-url").unwrap();
+    let celo_url = matches.value_of("celo-url").unwrap();
+    let gas = matches
+        .value_of("gas")
+        .unwrap()
+        .parse::<u64>()
+        .unwrap();
     let celo_gas_price = matches
         .value_of("celo-gas-price")
         .unwrap()
@@ -447,56 +471,54 @@ async fn main() -> web3::Result<()> {
         .unwrap();
 
     // Setup eth client
-    let transport = web3::transports::Http::new("http://localhost:8545").unwrap();
+    let transport = web3::transports::Http::new(celo_url).unwrap();
+    let mut client = tendermint_rpc::HttpClient::new(tendermint_url).unwrap();
 
-    // Setup tendermint client
-    let tm_addr = tendermint::net::Address::Tcp {
-        host: "localhost".to_string(),
-        port: 26657,
-        peer_id: None,
-    };
-    let (mut client, driver) = WebSocketClient::new(tm_addr.clone()).await.unwrap();
-
-    let driver_handle = tokio::spawn(async move { driver.run().await });
-
-    println!("[CONN] connected websocket to {:?}", tm_addr);
-    let mut subs = client.subscribe(EventType::NewBlock.into()).await.unwrap();
-
+    let mut last_height: u64 = 0;
     let mut header: Option<proto::tendermint::light::LightBlock> = None;
-    let mut cnt: u64 = 0;
-    while let Some(response) = subs.next().await {
-        let response = recv_data(response, &mut client, cnt, save_header).await;
-        if response.is_err() {
-            println!(
-                "Error: {} while processing tendermint node response",
-                response.err().unwrap()
-            );
-            continue;
+    for cnt in 0..max_headers {
+        let mut block = client.latest_block().await.unwrap().block;
+
+        let mut header_height: u64 = block.header.height.into();
+
+        // try 10 times to get next header
+        // NOTE: we could use websocket client subscription, but public node providers doesn't seem
+        // to expose the websocket endpoint, so this is more universal approach
+        for _ in 1..10 {
+            if last_height == 0 {
+                break;
+            }
+
+            sleep(Duration::from_secs(2)).await;
+
+            if header_height <= last_height {
+                block = client.latest_block().await.unwrap().block;
+
+                header_height = block.header.height.into();
+            } else {
+                break;
+            }
         }
+
+        last_height = block.header.height.into();
+
+        let response = recv_data_httpclient(&block, &mut client, cnt, save_header).await;
 
         header = Some(
             handle_header(
-                &mut client,
                 &transport,
                 header,
                 response.unwrap(),
                 cnt,
                 non_adjecent_test,
+                gas,
                 celo_usd_price,
                 celo_gas_price,
             )
             .await
             .unwrap(),
         );
-        cnt = cnt + 1;
-
-        if cnt == max_headers {
-            break;
-        }
     }
-
-    client.close().unwrap();
-    driver_handle.await.unwrap();
 
     Ok(())
 }
