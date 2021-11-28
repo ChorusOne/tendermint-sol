@@ -184,7 +184,7 @@ async fn handle_header<'a, T: web3::Transport>(
         };
 
         let client_state = proto::tendermint::light::ClientState {
-            chain_id: "wormhole".to_string(),
+            chain_id: header.signed_header.clone().unwrap().header.unwrap().chain_id,
             trust_level: Some(proto::tendermint::light::Fraction {
                 numerator: 1,
                 denominator: 3,
@@ -202,7 +202,7 @@ async fn handle_header<'a, T: web3::Transport>(
                 nanos: 0,
             }),
             frozen_height: 0,
-            latest_height: header.clone().signed_header.unwrap().header.unwrap().height,
+            latest_height: header.signed_header.clone().unwrap().header.unwrap().height,
             allow_update_after_expiry: true,
             allow_update_after_misbehaviour: true,
         };

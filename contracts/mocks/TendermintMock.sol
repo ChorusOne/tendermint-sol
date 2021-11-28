@@ -11,6 +11,11 @@ contract TendermintMock {
         return TendermintHelper.hash(sh);
     }
 
+    function validatorSetHash(bytes memory data) public pure returns (bytes32) {
+        ValidatorSet.Data memory vs = ValidatorSet.decode(data);
+        return TendermintHelper.hash(vs);
+    }
+
     function totalVotingPower(bytes memory data) public pure returns (int64) {
         ValidatorSet.Data memory vs = ValidatorSet.decode(data);
         return TendermintHelper.getTotalVotingPower(vs);
