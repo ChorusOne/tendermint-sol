@@ -1,7 +1,6 @@
 const TendermintMock = artifacts.require('TendermintMock')
 const protobuf = require('protobufjs')
 
-// TODO: use mainnet data
 contract('TendermintMock', () => {
   it('verifies signed header hash', async () => {
     const mock = await TendermintMock.deployed()
