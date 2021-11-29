@@ -31,7 +31,7 @@ async fn recv_data_httpclient(
     client: &mut HttpClient,
     _cnt: u64,
     save_header: bool,
-) -> Result<proto::tendermint::light::LightBlock, Box<dyn Error>> {
+) -> Result<proto::tendermint::light::TmHeader, Box<dyn Error>> {
     let commit_future = client.commit(block.header.height);
     let validator_set_future = client.validators(block.header.height, tendermint_rpc::Paging::All);
 
@@ -54,7 +54,7 @@ async fn recv_data(
     validator_set_response: tendermint_rpc::endpoint::validators::Response,
     _cnt: u64,
     save_header: bool,
-) -> Result<proto::tendermint::light::LightBlock, Box<dyn Error>> {
+) -> Result<proto::tendermint::light::TmHeader, Box<dyn Error>> {
     if save_header {
         let path = format!("./header.{}.signed_header.json", block.header.height);
         let mut output = File::create(path)?;
@@ -99,14 +99,14 @@ async fn recv_data(
 
 async fn handle_header<'a, T: web3::Transport>(
     transport: &'a T,
-    trusted_header: Option<proto::tendermint::light::LightBlock>,
-    header: proto::tendermint::light::LightBlock,
+    trusted_header: Option<proto::tendermint::light::TmHeader>,
+    header: proto::tendermint::light::TmHeader,
     cnt: u64,
     non_adjecent_test: bool,
     gas: u64,
     celo_usd_price: f64,
     celo_gas_price: f64,
-) -> Result<proto::tendermint::light::LightBlock, Box<dyn Error>> {
+) -> Result<proto::tendermint::light::TmHeader, Box<dyn Error>> {
     let trusted_height = match trusted_header.clone() {
         Some(trusted_header) => trusted_header.signed_header.unwrap().header.unwrap().height,
         None => 0,
@@ -309,7 +309,7 @@ async fn handle_header<'a, T: web3::Transport>(
         };
 
         let serialized_header =
-            proto::prost_serialize_any(&tm_header, "/tendermint.types.LightBlock").unwrap();
+            proto::prost_serialize_any(&tm_header, "/tendermint.types.TmHeader").unwrap();
 
         // MsgUpdateClient
         let tok = ethabi::Token::Tuple(vec![
@@ -475,7 +475,7 @@ async fn main() -> web3::Result<()> {
     let mut client = tendermint_rpc::HttpClient::new(tendermint_url).unwrap();
 
     let mut last_height: u64 = 0;
-    let mut header: Option<proto::tendermint::light::LightBlock> = None;
+    let mut header: Option<proto::tendermint::light::TmHeader> = None;
     for cnt in 0..max_headers {
         let mut block = client.latest_block().await.unwrap().block;
 

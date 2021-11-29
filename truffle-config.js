@@ -9,7 +9,7 @@ const celo = {
     networkCheckTimeout: 100000000,
     timeoutBlocks: 200,
     websocket: true,
-    gas: 20000000,
+    gas: 40000000,
     provider: () =>
     new HDWalletProvider(mnemonic, 'ws://127.0.0.1:3334', 0, 10)
 };

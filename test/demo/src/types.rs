@@ -164,8 +164,10 @@ pub fn to_validator_set(
 pub fn to_light_block(
     signed_header: crate::proto::tendermint::light::SignedHeader,
     validator_set: crate::proto::tendermint::light::ValidatorSet,
-) -> crate::proto::tendermint::light::LightBlock {
-    crate::proto::tendermint::light::LightBlock {
+) -> crate::proto::tendermint::light::TmHeader {
+    crate::proto::tendermint::light::TmHeader {
+        trusted_validators: None,
+        trusted_height: 0,
         signed_header: Some(signed_header),
         validator_set: Some(validator_set),
     }

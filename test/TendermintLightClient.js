@@ -46,7 +46,7 @@ async function ingest(h1, h2) {
 
       // args
       const clientStateObj = ClientState.create({
-        chain_id: 'wormhole',
+        chain_id: sh.header.chain_id,
         trust_level: Fraction.create({
           numerator: 1,
           denominator: 3
@@ -130,7 +130,7 @@ async function ingest(h1, h2) {
 
       const all = Any.create({
         value: await TmHeader.encode(tmHeader).finish(),
-        type_url: '/tendermint.types.LightBlock'
+        type_url: '/tendermint.types.TmHeader'
       })
       const allSerialized = await Any.encode(all).finish()
 
@@ -145,7 +145,8 @@ async function ingest(h1, h2) {
 
 async function call(fn, errMsg) {
       try {
-          await fn()
+        const tx = await fn()
+        console.log(tx)
       } catch (error) {
         console.log(errMsg)
         const tx = await web3.eth.getTransaction(error.tx)
