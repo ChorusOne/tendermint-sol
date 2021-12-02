@@ -2,65 +2,100 @@
 
 pragma solidity ^0.8.2;
 
-import {TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS, Validator, SimpleValidator, BlockID, Vote, CanonicalBlockID, CanonicalPartSetHeader, CanonicalVote, TmHeader, ConsensusState, MerkleRoot, Commit, CommitSig, SignedHeader, ValidatorSet, Duration, Timestamp, Consensus} from "./TendermintLight.sol";
+import {TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS, Validator, /*SimpleValidator, PublicKey,*/ BlockID, /* Vote, CanonicalBlockID , CanonicalPartSetHeader, */ CanonicalVote, TmHeader, ConsensusState, /*MerkleRoot,*/ Commit, CommitSig, SignedHeader, ValidatorSet, Duration, Timestamp, Consensus} from "./TendermintLight.sol";
 import "./Encoder.sol";
 import "../utils/crypto/MerkleTree.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 library TendermintHelper {
-    function toSimpleValidator(Validator.Data memory val) internal pure returns (SimpleValidator.Data memory) {
-        return SimpleValidator.Data({pub_key: val.pub_key, voting_power: val.voting_power});
+    //function toSimpleValidator(Validator.Data memory val) internal pure returns (SimpleValidator.Data memory) {
+        //PublicKey.Data memory pk;
+        //pk.ed25519 = val.pub_key;
+        
+        ////return SimpleValidator.Data({pub_key: pk, voting_power: val.voting_power});
+    //}
+
+    //function toSimpleValidatorEncoded(Validator.Data memory val) internal pure returns (bytes memory) {
+        //PublicKey.Data memory pk;
+        //pk.ed25519 = val.pub_key;
+
+        //return SimpleValidator.encode(SimpleValidator.Data({
+            //pub_key: pk, voting_power: val.voting_power
+        //}));
+    //}
+
+    function toSimpleValidatorEncoded(Validator.Data memory val) internal pure returns (bytes memory) {
+        //bytes memory encodedPK = Encoder.cdcEncode(1, val.pub_key); // 1: ed25519, 2: secp.. 
+        //bytes memory encidedVotingPower = Encoder.cdcEncode(2, val.voting_power);
+
+        //return abi.encodePacked(Encoder.cdcEncode(1, encodedPK), encidedVotingPower);
+        return Encoder.encodeNew(val);
     }
 
-    function toCanonicalBlockID(BlockID.Data memory blockID) internal pure returns (CanonicalBlockID.Data memory) {
-        return
-            CanonicalBlockID.Data({
-                hash: blockID.hash,
-                part_set_header: CanonicalPartSetHeader.Data({
-                    total: blockID.part_set_header.total,
-                    hash: blockID.part_set_header.hash
-                })
-            });
-    }
+    //function toCanonicalBlockID(BlockID.Data memory blockID) internal pure returns (CanonicalBlockID.Data memory) {
+        //return
+            //CanonicalBlockID.Data({
+                //hash: blockID.hash,
+                //part_set_header: CanonicalPartSetHeader.Data({
+                    //total: blockID.part_set_header.total,
+                    //hash: blockID.part_set_header.hash
+                //})
+            //});
+    //}
 
-    function toCanonicalVote(Vote.Data memory vote, string memory chainID)
-        internal
-        pure
-        returns (CanonicalVote.Data memory)
-    {
-        return
-            CanonicalVote.Data({
-                Type: vote.Type,
-                height: vote.height,
-                round: int64(vote.round),
-                block_id: toCanonicalBlockID(vote.block_id),
-                timestamp: vote.timestamp,
-                chain_id: chainID
-            });
-    }
+    //function toCanonicalVote(Vote.Data memory vote, string memory chainID)
+        //internal
+        //pure
+        //returns (CanonicalVote.Data memory)
+    //{
+        //return
+            //CanonicalVote.Data({
+                //Type: vote.Type,
+                //height: vote.height,
+                //round: int64(vote.round),
+                //block_id: toCanonicalBlockID(vote.block_id),
+                //timestamp: vote.timestamp,
+                //chain_id: chainID
+            //});
+    //}
 
     function toConsensusState(TmHeader.Data memory lightBlock) internal pure returns (ConsensusState.Data memory) {
         return
             ConsensusState.Data({
                 timestamp: lightBlock.signed_header.header.time,
-                root: MerkleRoot.Data({hash: lightBlock.signed_header.header.app_hash}),
+                merkle_root_hash: lightBlock.signed_header.header.app_hash,
                 next_validators_hash: lightBlock.signed_header.header.next_validators_hash
             });
     }
 
-    function toVote(Commit.Data memory commit, uint256 valIdx) internal pure returns (Vote.Data memory) {
+    //function toVote(Commit.Data memory commit, uint256 valIdx) internal pure returns (Vote.Data memory) {
+        //CommitSig.Data memory commitSig = commit.signatures[valIdx];
+
+        //return
+            //Vote.Data({
+                //Type: TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT,
+                //height: commit.height,
+                //round: commit.round,
+                //block_id: commit.block_id, // TODO: this is not exact copy
+                //timestamp: commitSig.timestamp,
+                //validator_address: commitSig.validator_address,
+                //validator_index: SafeCast.toInt32(int256(valIdx)),
+                //signature: commitSig.signature
+            //});
+    //}
+
+    function toCanonicalVote(Commit.Data memory commit, uint256 valIdx, string memory chainID) internal pure returns (CanonicalVote.Data memory) {
         CommitSig.Data memory commitSig = commit.signatures[valIdx];
 
         return
-            Vote.Data({
+            CanonicalVote.Data({
                 Type: TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT,
                 height: commit.height,
-                round: commit.round,
+                round: int64(commit.round),
+                //block_id: toCanonicalBlockID(commit.block_id), // TODO: this is not exact copy
                 block_id: commit.block_id, // TODO: this is not exact copy
                 timestamp: commitSig.timestamp,
-                validator_address: commitSig.validator_address,
-                validator_index: SafeCast.toInt32(int256(valIdx)),
-                signature: commitSig.signature
+                chain_id: chainID
             });
     }
 
@@ -144,19 +179,19 @@ library TendermintHelper {
         return MerkleTree.merkleRootHash(vs.validators, 0, vs.validators.length);
     }
 
-    function getByAddress(ValidatorSet.Data memory vals, bytes memory addr)
-        internal
-        pure
-        returns (uint256 index, bool found)
-    {
-        for (uint256 idx; idx < vals.validators.length; idx++) {
-            if (keccak256(abi.encodePacked(vals.validators[idx].Address)) == keccak256(abi.encodePacked(addr))) {
-                return (idx, true);
-            }
-        }
+    //function getByAddress(ValidatorSet.Data memory vals, bytes memory addr)
+        //internal
+        //pure
+        //returns (uint256 index, bool found)
+    //{
+        //for (uint256 idx; idx < vals.validators.length; idx++) {
+            //if (keccak256(abi.encodePacked(vals.validators[idx].Address)) == keccak256(abi.encodePacked(addr))) {
+                //return (idx, true);
+            //}
+        //}
 
-        return (0, false);
-    }
+        //return (0, false);
+    //}
 
     // TODO: can we avoid safe casting here?
     function getTotalVotingPower(ValidatorSet.Data memory vals) internal pure returns (int64) {

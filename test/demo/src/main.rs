@@ -55,15 +55,20 @@ async fn recv_data(
     _cnt: u64,
     save_header: bool,
 ) -> Result<proto::tendermint::light::TmHeader, Box<dyn Error>> {
+
+    let sh = types::to_signed_header(signed_header_response.clone().signed_header);
+    let vs = types::to_validator_set(validator_set_response.clone().validators);
+
     if save_header {
-        let path = format!("./header.{}.signed_header.json", block.header.height);
+        let path = format!("../data/header.{}.signed_header.json", block.header.height);
         let mut output = File::create(path)?;
-        let data = serde_json::to_vec_pretty(&signed_header_response.signed_header)?;
+        //let data = serde_json::to_vec_pretty(&signed_header_response.signed_header)?;
+        let data = serde_json::to_vec_pretty(&sh)?;
         output.write_all(&data).unwrap();
 
-        let path = format!("./header.{}.validator_set.json", block.header.height);
+        let path = format!("../data/header.{}.validator_set.json", block.header.height);
         let mut output = File::create(path)?;
-        let data = serde_json::to_vec_pretty(&validator_set_response.validators)?;
+        let data = serde_json::to_vec_pretty(&vs)?;
         output.write_all(&data).unwrap();
     }
 
@@ -88,9 +93,6 @@ async fn recv_data(
     let sh = types::to_signed_header(serde_json::from_str(input.as_str()).unwrap());
     let vs = types::to_validator_set(serde_json::from_str(input2.as_str()).unwrap());
     */
-
-    let sh = types::to_signed_header(signed_header_response.signed_header);
-    let vs = types::to_validator_set(validator_set_response.validators);
 
     let header = types::to_light_block(sh, vs);
 
@@ -208,15 +210,13 @@ async fn handle_header<'a, T: web3::Transport>(
         };
 
         let consensus_state = proto::tendermint::light::ConsensusState {
-            root: Some(proto::tendermint::light::MerkleRoot {
-                hash: header
+            merkle_root_hash: header
                     .clone()
                     .signed_header
                     .unwrap()
                     .header
                     .unwrap()
                     .app_hash,
-            }),
             timestamp: header.clone().signed_header.unwrap().header.unwrap().time,
             next_validators_hash: header
                 .clone()
@@ -305,8 +305,25 @@ async fn handle_header<'a, T: web3::Transport>(
             signed_header: header.signed_header.clone(),
             validator_set: header.validator_set.clone(),
             trusted_height: trusted_height,
-            trusted_validators: trusted.validator_set.clone(),
+            //trusted_validators: trusted.validator_set.clone(),
         };
+
+        let v1 = hex::encode(proto::prost_serialize_any(&header.validator_set.clone().unwrap(), "/tendermint.types.TmHeader").unwrap());
+        let v2 = hex::encode(proto::prost_serialize_any(&trusted.validator_set.clone().unwrap(), "/tendermint.types.TmHeader").unwrap());
+        println!("v1 == v2: {:?} {:?} {:?}", v1 == v2, header.clone().signed_header.unwrap().header.unwrap().height, trusted_height);
+
+
+        //let vv1 = header.clone().validator_set.clone().unwrap().clone().validators.clone();
+        //let vv2 = trusted.clone().validator_set.clone().unwrap().clone().validators.clone();
+        //for (item1, item2) in vv1.iter().zip(vv2.iter()) {
+            ////let h1 = hex::encode(item1.pub_key.unwrap().ed25519.clone());
+            ////let h2 = hex::encode(item2.pub_key.clone());
+            ////let pk1 = hex::encode(item1.address.clone());
+            ////let pk2 = hex::encode(item2.address.clone());
+            ////println!("{:?}, {:?} : {:?}", h1, h2, h1 == h2);
+            //println!("{:?}, {:?} : {:?}", item1.voting_power, item2.voting_power, item1.voting_power == item2.voting_power);
+            ////println!("{:?}, {:?} : {:?}", item1.proposer_priority, item2.proposer_priority, item1.proposer_priority == item2.proposer_priority);
+        //};
 
         let serialized_header =
             proto::prost_serialize_any(&tm_header, "/tendermint.types.TmHeader").unwrap();

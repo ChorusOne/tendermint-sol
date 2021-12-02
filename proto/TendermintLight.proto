@@ -62,17 +62,17 @@ message ConsensusState {
   Timestamp timestamp         = 1;
 
   // commitment root (i.e app hash)
-  MerkleRoot root            = 2;
+  bytes merkle_root_hash            = 2;
   bytes next_validators_hash = 3;
 }
 
 // MerkleRoot defines a merkle root hash.
 // In the Cosmos SDK, the AppHash of a block header becomes the root.
-message MerkleRoot {
-  //option (gogoproto.goproto_getters) = false;
+//message MerkleRoot {
+  ////option (gogoproto.goproto_getters) = false;
 
-  bytes hash = 1;
-}
+  //bytes hash = 1;
+//}
 
 
 //import "channel/Channel.proto";
@@ -112,61 +112,62 @@ enum SignedMsgType {
   //uint64 revision_height = 2;
 //}
 
-message CanonicalPartSetHeader {
-  uint32 total = 1;
-  bytes  hash  = 2;
-}
+//message CanonicalPartSetHeader {
+  //uint32 total = 1;
+  //bytes  hash  = 2;
+//}
 
-message CanonicalBlockID {
-  bytes                  hash            = 1;
-  CanonicalPartSetHeader part_set_header = 2;
-}
+//message CanonicalBlockID {
+  //bytes                  hash            = 1;
+  //CanonicalPartSetHeader part_set_header = 2;
+//}
 
 message CanonicalVote {
   SignedMsgType             type      = 1;
   sfixed64                  height    = 2;
   sfixed64                  round     = 3;
-  CanonicalBlockID          block_id  = 4;
+  BlockID          block_id  = 4; // This is CanonicalBlockID (it's equal in our case) / also CanonicalPartSetHeader == PartSetHeader
   Timestamp timestamp = 5;
   string                    chain_id  = 6;
 }
 
-message Vote {
-  SignedMsgType type     = 1;
-  int64         height   = 2;
-  int32         round    = 3;
-  BlockID       block_id = 4; //[(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];  // zero if vote is nil.
-  Timestamp timestamp = 5; // [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  bytes validator_address = 6;
-  int32 validator_index   = 7;
-  bytes signature         = 8;
-}
+//message Vote {
+  //SignedMsgType type     = 1;
+  //int64         height   = 2;
+  //int32         round    = 3;
+  //BlockID       block_id = 4; //[(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];  // zero if vote is nil.
+  //Timestamp timestamp = 5; // [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  //bytes validator_address = 6;
+  //int32 validator_index   = 7;
+  //bytes signature         = 8;
+//}
 
 message ValidatorSet {
   repeated Validator validators         = 1;
-  Validator          proposer           = 2;
-  int64              total_voting_power = 3;
+  //Validator          proposer           = 2;
+  int64              total_voting_power = 2;
 }
 
 message Validator {
-  bytes                       address           = 1;
-  PublicKey                   pub_key           = 2;
-  int64                       voting_power      = 3;
-  int64                       proposer_priority = 4;
+  //bytes                       address           = 1;
+  bytes                       pub_key           = 1;
+  int64                       voting_power      = 2;
+  //int64                       proposer_priority = 4;
 }
 
-message SimpleValidator {
-  PublicKey pub_key      = 1;
-  int64     voting_power = 2;
-}
+//message SimpleValidator {
+  //PublicKey pub_key      = 1;
+  //int64     voting_power = 2;
+//}
 
-message PublicKey {
-  oneof sum {
-    bytes ed25519   = 1;
-    bytes secp256k1 = 2;
-    bytes sr25519   = 3;
-  }
-}
+//message PublicKey {
+  //oneof sum {
+    //bytes ed25519   = 1;
+    //bytes secp256k1 = 2;
+    //bytes sr25519   = 3;
+  //}
+//}
+
 
 message PartSetHeader {
   uint32 total = 1;
@@ -189,9 +190,9 @@ message Commit {
 // CommitSig is a part of the Vote included in a Commit.
 message CommitSig {
   BlockIDFlag               block_id_flag     = 1;
-  bytes                     validator_address = 2;
-  Timestamp                 timestamp         = 3;
-  bytes                     signature         = 4;
+  //bytes                     validator_address = 2; 
+  Timestamp                 timestamp         = 2;
+  bytes                     signature         = 3;
 }
 
 message Timestamp {
@@ -234,5 +235,5 @@ message TmHeader {
   ValidatorSet        validator_set = 2;
 
   int64               trusted_height = 3;
-  ValidatorSet        trusted_validators = 4;
+  //ValidatorSet        trusted_validators = 4;
 }

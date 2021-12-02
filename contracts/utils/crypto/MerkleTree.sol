@@ -3,7 +3,7 @@
 pragma solidity ^0.8.2;
 
 import "../../proto/TendermintHelper.sol";
-import { SimpleValidator, Validator } from "../../proto/TendermintLight.sol";
+import { /*SimpleValidator,*/ Validator } from "../../proto/TendermintLight.sol";
 
 library MerkleTree {
 
@@ -58,7 +58,8 @@ library MerkleTree {
         if (total == 0) {
             return emptyHash();
         } else if (total == 1) {
-            bytes memory encodedValidator = SimpleValidator.encode(TendermintHelper.toSimpleValidator(validators[start]));
+            bytes memory encodedValidator = TendermintHelper.toSimpleValidatorEncoded(validators[start]);
+            //bytes memory encodedValidator = Validator.encode(validators[start]);
             return leafHash(encodedValidator);
         }  else {
             uint k = getSplitPoint(total);

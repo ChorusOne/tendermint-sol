@@ -73,7 +73,7 @@ pub fn to_sig(
         tendermint::block::commit_sig::CommitSig::BlockIdFlagAbsent => {
             crate::proto::tendermint::light::CommitSig {
                 block_id_flag: crate::proto::tendermint::light::BlockIdFlag::Absent.into(),
-                validator_address: Vec::new(),
+                //validator_address: Vec::new(),
                 timestamp: None,
                 signature: Vec::new(),
             }
@@ -84,7 +84,7 @@ pub fn to_sig(
             signature,
         } => crate::proto::tendermint::light::CommitSig {
             block_id_flag: crate::proto::tendermint::light::BlockIdFlag::Nil.into(),
-            validator_address: validator_address.into(),
+            //validator_address: validator_address.into(),
             timestamp: Some(to_timestamp(timestamp)),
             signature: signature.unwrap().into(),
         },
@@ -94,7 +94,7 @@ pub fn to_sig(
             signature,
         } => crate::proto::tendermint::light::CommitSig {
             block_id_flag: crate::proto::tendermint::light::BlockIdFlag::Commit.into(),
-            validator_address: validator_address.into(),
+            //validator_address: validator_address.into(),
             timestamp: Some(to_timestamp(timestamp)),
             signature: signature.unwrap().into(),
         },
@@ -146,17 +146,18 @@ pub fn to_validator_set(
         validators: validators
             .iter()
             .map(|validator| crate::proto::tendermint::light::Validator {
-                address: validator.address.into(),
-                pub_key: Some(crate::proto::tendermint::light::PublicKey {
-                    sum: Some(crate::proto::tendermint::light::public_key::Sum::Ed25519(
-                        validator.pub_key.to_bytes().to_vec(),
-                    )),
-                }),
+                //address: validator.address.into(),
+                //pub_key: Some(crate::proto::tendermint::light::PublicKey {
+                    //sum: Some(crate::proto::tendermint::light::public_key::Sum::Ed25519(
+                            //validator.pub_key.to_bytes().to_vec(),
+                    //)
+                //)}),
+                pub_key: validator.pub_key.to_bytes().to_vec(),
                 voting_power: validator.power.into(),
-                proposer_priority: validator.proposer_priority.into(),
+                //proposer_priority: validator.proposer_priority.into(),
             })
             .collect(),
-        proposer: None,
+        //proposer: None,
         total_voting_power: 0,
     }
 }
@@ -166,7 +167,7 @@ pub fn to_light_block(
     validator_set: crate::proto::tendermint::light::ValidatorSet,
 ) -> crate::proto::tendermint::light::TmHeader {
     crate::proto::tendermint::light::TmHeader {
-        trusted_validators: None,
+        //trusted_validators: None,
         trusted_height: 0,
         signed_header: Some(signed_header),
         validator_set: Some(validator_set),

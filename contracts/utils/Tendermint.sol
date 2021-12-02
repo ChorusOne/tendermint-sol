@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.2;
 
-import {TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS, SignedHeader, BlockID, Timestamp, ValidatorSet, Duration, Fraction, Commit, Validator, CommitSig, CanonicalVote, Vote} from "../proto/TendermintLight.sol";
+import {TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS, SignedHeader, BlockID, Timestamp, ValidatorSet, Duration, Fraction, Commit, Validator, CommitSig, CanonicalVote/*, Vote */} from "../proto/TendermintLight.sol";
 import "../proto/TendermintHelper.sol";
 import "../proto/Encoder.sol";
 import "./crypto/Ed25519.sol";
@@ -16,30 +16,31 @@ library Tendermint {
     using TendermintHelper for Timestamp.Data;
     using TendermintHelper for BlockID.Data;
     using TendermintHelper for Commit.Data;
-    using TendermintHelper for Vote.Data;
+    //using TendermintHelper for Vote.Data;
 
     function verify(
         Duration.Data memory trustingPeriod,
         Duration.Data memory maxClockDrift,
         Fraction.Data memory trustLevel,
         SignedHeader.Data memory trustedHeader,
-        ValidatorSet.Data memory trustedVals,
+        //ValidatorSet.Data memory trustedVals,
         SignedHeader.Data memory untrustedHeader,
         ValidatorSet.Data memory untrustedVals,
         Duration.Data memory currentTime
     ) internal view returns (bool) {
         if (untrustedHeader.header.height != trustedHeader.header.height + 1) {
-            return
-                verifyNonAdjacent(
-                    trustedHeader,
-                    trustedVals,
-                    untrustedHeader,
-                    untrustedVals,
-                    trustingPeriod,
-                    currentTime,
-                    maxClockDrift,
-                    trustLevel
-                );
+            require(false, "the non-adjecent mode is not supported");
+            //return
+                //verifyNonAdjacent(
+                    //trustedHeader,
+                    //trustedVals,
+                    //untrustedHeader,
+                    //untrustedVals,
+                    //trustingPeriod,
+                    //currentTime,
+                    //maxClockDrift,
+                    //trustLevel
+                //);
         }
 
         return
@@ -79,40 +80,40 @@ library Tendermint {
         return ok;
     }
 
-    function verifyNonAdjacent(
-        SignedHeader.Data memory trustedHeader,
-        ValidatorSet.Data memory trustedVals,
-        SignedHeader.Data memory untrustedHeader,
-        ValidatorSet.Data memory untrustedVals,
-        Duration.Data memory trustingPeriod,
-        Duration.Data memory currentTime,
-        Duration.Data memory maxClockDrift,
-        Fraction.Data memory trustLevel
-    ) internal view returns (bool) {
-        require(
-            untrustedHeader.header.height != trustedHeader.header.height + 1,
-            "headers must be non adjacent in height"
-        );
+    //function verifyNonAdjacent(
+        //SignedHeader.Data memory trustedHeader,
+        //ValidatorSet.Data memory trustedVals,
+        //SignedHeader.Data memory untrustedHeader,
+        //ValidatorSet.Data memory untrustedVals,
+        //Duration.Data memory trustingPeriod,
+        //Duration.Data memory currentTime,
+        //Duration.Data memory maxClockDrift,
+        //Fraction.Data memory trustLevel
+    //) internal view returns (bool) {
+        //require(
+            //untrustedHeader.header.height != trustedHeader.header.height + 1,
+            //"headers must be non adjacent in height"
+        //);
 
-        require(!trustedHeader.isExpired(trustingPeriod, currentTime), "header can't be expired");
+        //require(!trustedHeader.isExpired(trustingPeriod, currentTime), "header can't be expired");
 
-        verifyNewHeaderAndVals(untrustedHeader, untrustedVals, trustedHeader, currentTime, maxClockDrift);
+        //verifyNewHeaderAndVals(untrustedHeader, untrustedVals, trustedHeader, currentTime, maxClockDrift);
 
-        // Ensure that +`trustLevel` (default 1/3) or more of last trusted validators signed correctly.
-        verifyCommitLightTrusting(trustedVals, trustedHeader.header.chain_id, untrustedHeader.commit, trustLevel);
+        //// Ensure that +`trustLevel` (default 1/3) or more of last trusted validators signed correctly.
+        //verifyCommitLightTrusting(trustedVals, trustedHeader.header.chain_id, untrustedHeader.commit, trustLevel);
 
-        // Ensure that +2/3 of new validators signed correctly.
-        //if err := untrustedVals.VerifyCommitLight(trustedHeader.ChainID, untrustedHeader.Commit.BlockID,
-        bool ok = verifyCommitLight(
-            untrustedVals,
-            trustedHeader.header.chain_id,
-            untrustedHeader.commit.block_id,
-            untrustedHeader.header.height,
-            untrustedHeader.commit
-        );
+        //// Ensure that +2/3 of new validators signed correctly.
+        ////if err := untrustedVals.VerifyCommitLight(trustedHeader.ChainID, untrustedHeader.Commit.BlockID,
+        //bool ok = verifyCommitLight(
+            //untrustedVals,
+            //trustedHeader.header.chain_id,
+            //untrustedHeader.commit.block_id,
+            //untrustedHeader.header.height,
+            //untrustedHeader.commit
+        //);
 
-        return ok;
-    }
+        //return ok;
+    //}
 
     function verifyNewHeaderAndVals(
         SignedHeader.Data memory untrustedHeader,
@@ -160,60 +161,61 @@ library Tendermint {
         );
     }
 
-    function verifyCommitLightTrusting(
-        ValidatorSet.Data memory trustedVals,
-        string memory chainID,
-        Commit.Data memory commit,
-        Fraction.Data memory trustLevel
-    ) internal view returns (bool) {
-        // sanity check
-        require(trustLevel.denominator != 0, "trustLevel has zero Denominator");
+    //function verifyCommitLightTrusting(
+        //ValidatorSet.Data memory trustedVals,
+        //string memory chainID,
+        //Commit.Data memory commit,
+        //Fraction.Data memory trustLevel
+    //) internal view returns (bool) {
+        //// sanity check
+        //require(trustLevel.denominator != 0, "trustLevel has zero Denominator");
 
-        int64 talliedVotingPower = 0;
-        bool[] memory seenVals = new bool[](trustedVals.validators.length);
+        //int64 talliedVotingPower = 0;
+        //bool[] memory seenVals = new bool[](trustedVals.validators.length);
 
-        // TODO: unsafe multiplication?
-        CommitSig.Data memory commitSig;
-        int256 totalVotingPowerMulByNumerator = trustedVals.total_voting_power * int64(trustLevel.numerator);
-        int256 votingPowerNeeded = totalVotingPowerMulByNumerator / int64(trustLevel.denominator);
+        //// TODO: unsafe multiplication?
+        //CommitSig.Data memory commitSig;
+        //int256 totalVotingPowerMulByNumerator = trustedVals.total_voting_power * int64(trustLevel.numerator);
+        //int256 votingPowerNeeded = totalVotingPowerMulByNumerator / int64(trustLevel.denominator);
 
-        for (uint256 idx = 0; idx < commit.signatures.length; idx++) {
-            commitSig = commit.signatures[idx];
+        //for (uint256 idx = 0; idx < commit.signatures.length; idx++) {
+            //commitSig = commit.signatures[idx];
 
-            // no need to verify absent or nil votes.
-            if (commitSig.block_id_flag != TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.BlockIDFlag.BLOCK_ID_FLAG_COMMIT) {
-                continue;
-            }
+            //// no need to verify absent or nil votes.
+            //if (commitSig.block_id_flag != TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.BlockIDFlag.BLOCK_ID_FLAG_COMMIT) {
+                //continue;
+            //}
 
-            // We don't know the validators that committed this block, so we have to
-            // check for each vote if its validator is already known.
-            // TODO: O(n^2)
-            (uint256 valIdx, bool found) = trustedVals.getByAddress(commitSig.validator_address);
-            if (found) {
-                // check for double vote of validator on the same commit
-                require(!seenVals[valIdx], "double vote of validator on the same commit");
-                seenVals[valIdx] = true;
+            // TODO: removed address field for test
+            //// We don't know the validators that committed this block, so we have to
+            //// check for each vote if its validator is already known.
+            //// TODO: O(n^2)
+            //(uint256 valIdx, bool found) = trustedVals.getByAddress(commitSig.validator_address);
+            //if (found) {
+                //// check for double vote of validator on the same commit
+                //require(!seenVals[valIdx], "double vote of validator on the same commit");
+                //seenVals[valIdx] = true;
 
-                Validator.Data memory val = trustedVals.validators[valIdx];
+                //Validator.Data memory val = trustedVals.validators[valIdx];
 
-                // validate signature
-                bytes memory message = voteSignBytesDelim(commit, chainID, idx);
-                bytes memory sig = commitSig.signature;
+                //// validate signature
+                //bytes memory message = voteSignBytesDelim(commit, chainID, idx);
+                //bytes memory sig = commitSig.signature;
 
-                if (!verifySig(val, message, sig)) {
-                    return false;
-                }
+                //if (!verifySig(val, message, sig)) {
+                    //return false;
+                //}
 
-                talliedVotingPower += val.voting_power;
+                //talliedVotingPower += val.voting_power;
 
-                if (talliedVotingPower > votingPowerNeeded) {
-                    return true;
-                }
-            }
-        }
+                //if (talliedVotingPower > votingPowerNeeded) {
+                    //return true;
+                //}
+            //}
+        //}
 
-        return false;
-    }
+        //return false;
+    //}
 
     // VerifyCommitLight verifies +2/3 of the set had signed the given commit.
     //
@@ -271,17 +273,17 @@ library Tendermint {
         bytes memory message,
         bytes memory sig
     ) internal view returns (bool) {
-        bytes memory pubkey;
+        return Ed25519.verify(message, val.pub_key, sig);
 
-        if (val.pub_key.ed25519.length > 0) {
-            pubkey = val.pub_key.ed25519;
-            return Ed25519.verify(message, pubkey, sig);
-        } else if (val.pub_key.secp256k1.length > 0) {
-            pubkey = val.pub_key.secp256k1;
-            return Secp256k1.verify(message, pubkey, sig);
-        }
+        //if (val.pub_key.ed25519.length > 0) {
+            //pubkey = val.pub_key.ed25519;
+            //return Ed25519.verify(message, pubkey, sig);
+        //} else if (val.pub_key.secp256k1.length > 0) {
+            //pubkey = val.pub_key.secp256k1;
+            //return Secp256k1.verify(message, pubkey, sig);
+        //}
 
-        return false;
+        //return false;
     }
 
     function voteSignBytes(
@@ -289,10 +291,10 @@ library Tendermint {
         string memory chainID,
         uint256 idx
     ) internal pure returns (bytes memory) {
-        Vote.Data memory vote;
-        vote = commit.toVote(idx);
+        //Vote.Data memory vote;
+        //vote = commit.toVote(idx);
 
-        return (CanonicalVote.encode(vote.toCanonicalVote(chainID)));
+        return (CanonicalVote.encode(commit.toCanonicalVote(idx,chainID)));
     }
 
     function voteSignBytesDelim(

@@ -21,8 +21,8 @@ contract TendermintMock {
         return TendermintHelper.getTotalVotingPower(vs);
     }
 
-    function getByAddress(bytes memory data, bytes memory addr) public pure returns (uint256 index, bool found) {
-        ValidatorSet.Data memory vs = ValidatorSet.decode(data);
-        return TendermintHelper.getByAddress(vs, addr);
-    }
+    //function getByAddress(bytes memory data, bytes memory addr) public pure returns (uint256 index, bool found) {
+        //ValidatorSet.Data memory vs = ValidatorSet.decode(data);
+        //return TendermintHelper.getByAddress(vs, addr);
+    //}
 }

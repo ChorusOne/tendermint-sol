@@ -5,12 +5,13 @@ const protobuf = require('protobufjs')
 
 contract('TendermintLightClient', () => {
   it('verifies ingestion of valid continuous headers', async () => {
-      await ingest(28, 29)
+      await ingest(8557448, 8557449)
+      //await ingest(28, 29)
   })
 
-  it('verifies ingestion of valid non-continuous headers', async () => {
-      await ingest(28, 30)
-  })
+  //it('verifies ingestion of valid non-continuous headers', async () => {
+      //await ingest(28, 30)
+  //})
 })
 
 async function ingest(h1, h2) {
@@ -125,7 +126,7 @@ async function ingest(h1, h2) {
         validator_set: svs,
 
         trusted_height: sh.header.height.low,
-        trusted_validators: vs
+        //trusted_validators: vs
       })
 
       const all = Any.create({
