@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.2;
 
-import {TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS, Validator, SimpleValidator, BlockID, Vote, CanonicalBlockID, CanonicalPartSetHeader, CanonicalVote, TmHeader as LightBlock, ConsensusState, MerkleRoot, Commit, CommitSig, SignedHeader, ValidatorSet, Duration, Timestamp, Consensus} from "./TendermintLight.sol";
+import {TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS, Validator, SimpleValidator, BlockID, Vote, CanonicalBlockID, CanonicalPartSetHeader, CanonicalVote, TmHeader, ConsensusState, MerkleRoot, Commit, CommitSig, SignedHeader, ValidatorSet, Duration, Timestamp, Consensus} from "./TendermintLight.sol";
 import "./Encoder.sol";
 import "../utils/crypto/MerkleTree.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -39,7 +39,7 @@ library TendermintHelper {
             });
     }
 
-    function toConsensusState(LightBlock.Data memory lightBlock) internal pure returns (ConsensusState.Data memory) {
+    function toConsensusState(TmHeader.Data memory lightBlock) internal pure returns (ConsensusState.Data memory) {
         return
             ConsensusState.Data({
                 timestamp: lightBlock.signed_header.header.time,

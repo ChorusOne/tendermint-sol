@@ -44,21 +44,21 @@ async fn abci_query(
     Ok(response)
 }
 
-    fn query(&self, data: Path, height: ICSHeight, prove: bool) -> Result<QueryResponse, Error> {
-        crate::time!("query");
+fn query(&self, data: Path, height: ICSHeight, prove: bool) -> Result<QueryResponse, Error> {
+    crate::time!("query");
 
-        let path = TendermintABCIPath::from_str(IBC_QUERY_PATH).unwrap();
+    let path = TendermintABCIPath::from_str(IBC_QUERY_PATH).unwrap();
 
-        let height = Height::try_from(height.revision_height).map_err(Error::invalid_height)?;
+    let height = Height::try_from(height.revision_height).map_err(Error::invalid_height)?;
 
-        if !data.is_provable() & prove {
-            return Err(Error::private_store());
-        }
-
-        let response = self.block_on(abci_query(self, path, data.to_string(), height, prove))?;
-
-        // TODO - Verify response proof, if requested.
-        if prove {}
-
-        Ok(response)
+    if !data.is_provable() & prove {
+        return Err(Error::private_store());
     }
+
+    let response = self.block_on(abci_query(self, path, data.to_string(), height, prove))?;
+
+    // TODO - Verify response proof, if requested.
+    if prove {}
+
+    Ok(response)
+}

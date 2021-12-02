@@ -8,19 +8,22 @@ pub mod tendermint {
 }
 
 pub fn prost_serialize<T: Message>(msg: &T) -> Result<Vec<u8>, prost::EncodeError> {
-	let mut buf = Vec::new();
-	msg.encode(&mut buf)?;
+    let mut buf = Vec::new();
+    msg.encode(&mut buf)?;
 
-	Ok(buf)
+    Ok(buf)
 }
 
-pub fn prost_serialize_any<T: Message>(msg: &T, type_url: &'static str) -> Result<Vec<u8>, prost::EncodeError> {
-	let any = Any {
-		type_url: type_url.to_string(),
-		value: prost_serialize(msg)?,
-	};
+pub fn prost_serialize_any<T: Message>(
+    msg: &T,
+    type_url: &'static str,
+) -> Result<Vec<u8>, prost::EncodeError> {
+    let any = Any {
+        type_url: type_url.to_string(),
+        value: prost_serialize(msg)?,
+    };
 
-	let serialized = prost_serialize(&any)?;
+    let serialized = prost_serialize(&any)?;
 
-	Ok(serialized)
+    Ok(serialized)
 }

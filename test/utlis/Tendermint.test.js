@@ -1,7 +1,6 @@
 const TendermintMock = artifacts.require('TendermintMock')
 const protobuf = require('protobufjs')
 
-// TODO: use mainnet data
 contract('TendermintMock', () => {
   it('verifies signed header hash', async () => {
     const mock = await TendermintMock.deployed()
@@ -64,4 +63,33 @@ contract('TendermintMock', () => {
       assert.equal(found, false, 'invalid search result')
     })
   })
+
+  it('verifies validator set hash', async () => {
+    const mock = await TendermintMock.deployed()
+    const root = new protobuf.Root()
+
+    await root.load('./proto/TendermintLight.proto', { keepCase: true }).then(async function (root, err) {
+      if (err) { throw err }
+
+      const ValidatorSet = root.lookupType('tendermint.light.ValidatorSet')
+      const validatorSetObj = require('../data/header.28.validator_set.json')
+      const vs = ValidatorSet.fromObject(validatorSetObj)
+
+      const SignedHeader = root.lookupType('tendermint.light.SignedHeader')
+      const signedHeaderObj = require('../data/header.28.signed_header.json')
+      const sh = SignedHeader.fromObject(signedHeaderObj)
+
+      const encoded = await ValidatorSet.encode(vs).finish()
+      const hash = await mock.validatorSetHash.call(encoded)
+      const expected = toHexString(sh.header.validators_hash)
+
+      assert.equal(expected, hash, 'invalid validator hash')
+    })
+  })
 })
+
+function toHexString (byteArray) {
+  return '0x' + Array.from(byteArray, function (byte) {
+    return ('0' + (byte & 0xFF).toString(16)).slice(-2)
+  }).join('')
+}

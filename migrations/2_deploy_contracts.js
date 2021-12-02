@@ -43,7 +43,7 @@ function deployLightClient(deployer) {
 
 module.exports = function(deployer, network) {
   if (network == 'tests') {
-      return deployMocks(deployer);
+      deployMocks(deployer);
   }
 
   return deployLightClient(deployer);

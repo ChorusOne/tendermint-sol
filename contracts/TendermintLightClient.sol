@@ -5,7 +5,8 @@ import {
     LightHeader,
     ValidatorSet,
     ClientState,
-    ConsensusState
+    ConsensusState,
+    TmHeader
 } from "./proto/TendermintLight.sol";
 import "./proto/TendermintHelper.sol";
 import {GoogleProtobufAny as Any} from "./proto/GoogleProtobufAny.sol";
@@ -19,14 +20,14 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 contract TendermintLightClient is IClient {
     using Bytes for bytes;
-    using TendermintHelper for LightBlock.Data;
+    using TendermintHelper for TmHeader.Data;
     using TendermintHelper for ConsensusState.Data;
     using TendermintHelper for ValidatorSet.Data;
 
     struct ProtoTypes {
         bytes32 clientState;
         bytes32 consensusState;
-        bytes32 lightBlock;
+        bytes32 tmHeader;
     }
 
     ProtoTypes private _pts;
@@ -35,7 +36,7 @@ contract TendermintLightClient is IClient {
         _pts = ProtoTypes({
             clientState: keccak256(abi.encodePacked("/tendermint.types.ClientState")),
             consensusState: keccak256(abi.encodePacked("/tendermint.types.ConsensusState")),
-            lightBlock: keccak256(abi.encodePacked("/tendermint.types.LightBlock"))
+            tmHeader: keccak256(abi.encodePacked("/tendermint.types.TmHeader"))
         });
     }
 
@@ -77,78 +78,78 @@ contract TendermintLightClient is IClient {
         bytes memory clientStateBytes,
         bytes memory headerBytes
     ) public override view returns (bytes memory newClientStateBytes, bytes memory newConsensusStateBytes, uint64 height) {
-        LightBlock.Data memory lightBlock;
+        TmHeader.Data memory tmHeader;
         ClientState.Data memory clientState;
         ConsensusState.Data memory trustedConsensusState;
         ConsensusState.Data memory prevConsState;
         bool ok;
         bool conflictingHeader;
 
-        (lightBlock, ok) = unmarshalLightBlock(headerBytes);
+        (tmHeader, ok) = unmarshalTmHeader(headerBytes);
         require(ok, "LC: light block is invalid");
 
         // Check if the Client store already has a consensus state for the header's height
         // If the consensus state exists, and it matches the header then we return early
         // since header has already been submitted in a previous UpdateClient.
-	    (prevConsState, ok) = getConsensusState(host, clientId, uint64(lightBlock.signed_header.header.height));
+	    (prevConsState, ok) = getConsensusState(host, clientId, uint64(tmHeader.signed_header.header.height));
 	    if (ok) {
             // This header has already been submitted and the necessary state is already stored
             // in client store, thus we can return early without further validation.
-            if (prevConsState.isEqual(lightBlock.toConsensusState())) {
-				return (clientStateBytes, marshalConsensusState(prevConsState), uint64(lightBlock.signed_header.header.height));
+            if (prevConsState.isEqual(tmHeader.toConsensusState())) {
+				return (clientStateBytes, marshalConsensusState(prevConsState), uint64(tmHeader.signed_header.header.height));
             }
             // A consensus state already exists for this height, but it does not match the provided header.
             // Thus, we must check that this header is valid, and if so we will freeze the client.
             conflictingHeader = true;
 	    }
 
-        (trustedConsensusState, ok) = getConsensusState(host, clientId, uint64(lightBlock.trusted_height));
+        (trustedConsensusState, ok) = getConsensusState(host, clientId, uint64(tmHeader.trusted_height));
         require(ok, "LC: consensusState not found at trusted height");
 
         (clientState, ok) = unmarshalClientState(clientStateBytes);
         require(ok, "LC: client state is invalid");
 
         // TODO: timestamp * 1000 * 1000 * 1000??
-        checkValidity(clientState, trustedConsensusState, lightBlock, Duration.Data({Seconds: SafeCast.toInt64(int256(block.timestamp)), nanos: 0})); // TODO: unsafe downcast to int64
+        checkValidity(clientState, trustedConsensusState, tmHeader, Duration.Data({Seconds: SafeCast.toInt64(int256(block.timestamp)), nanos: 0})); // TODO: unsafe downcast to int64
 
 	    // Header is different from existing consensus state and also valid, so freeze the client and return
 	    if (conflictingHeader) {
-            clientState.frozen_height = lightBlock.signed_header.header.height;
+            clientState.frozen_height = tmHeader.signed_header.header.height;
             return (
                 marshalClientState(clientState),
-                marshalConsensusState(lightBlock.toConsensusState()),
-                uint64(lightBlock.signed_header.header.height)
+                marshalConsensusState(tmHeader.toConsensusState()),
+                uint64(tmHeader.signed_header.header.height)
             );
 	    }
 
         // TODO: check consensus state monotonicity
 
         // update the consensus state from a new header and set processed time metadata
-        if (lightBlock.signed_header.header.height > clientState.latest_height) {
-            clientState.latest_height = lightBlock.signed_header.header.height;
+        if (tmHeader.signed_header.header.height > clientState.latest_height) {
+            clientState.latest_height = tmHeader.signed_header.header.height;
         }
 
-        return (marshalClientState(clientState), marshalConsensusState(lightBlock.toConsensusState()), uint64(clientState.latest_height));
+        return (marshalClientState(clientState), marshalConsensusState(tmHeader.toConsensusState()), uint64(clientState.latest_height));
     }
 
     // checkValidity checks if the Tendermint header is valid.
     function checkValidity(
         ClientState.Data memory clientState,
         ConsensusState.Data memory trustedConsensusState,
-        LightBlock.Data memory lightBlock,
+        TmHeader.Data memory tmHeader,
         Duration.Data memory currentTime
     ) private view {
         // checkTrustedHead
         // assert that trustedVals is NextValidators of last trusted header
         // to do this, we check that trustedVals.Hash() == consState.NextValidatorsHash
         require(
-            lightBlock.trusted_validators.hash() == trustedConsensusState.next_validators_hash.toBytes32(),
+            tmHeader.trusted_validators.hash() == trustedConsensusState.next_validators_hash.toBytes32(),
             "LC: headers trusted validators does not hash to latest trusted validators"
         );
 
 	    // assert header height is newer than consensus state
         require(
-            lightBlock.signed_header.header.height > lightBlock.trusted_height,
+            tmHeader.signed_header.header.height > tmHeader.trusted_height,
             "LC: header height consensus state height"
         );
 
@@ -156,16 +157,16 @@ contract TendermintLightClient is IClient {
 
         LightHeader.Data memory lc;
         lc.chain_id = clientState.chain_id;
-        lc.height = lightBlock.trusted_height;
+        lc.height = tmHeader.trusted_height;
         lc.time = trustedConsensusState.timestamp;
         lc.next_validators_hash = trustedConsensusState.next_validators_hash;
 
-        ValidatorSet.Data memory trustedVals = lightBlock.trusted_validators;
+        ValidatorSet.Data memory trustedVals = tmHeader.trusted_validators;
         SignedHeader.Data memory trustedHeader;
         trustedHeader.header = lc;
 
-        SignedHeader.Data memory untrustedHeader = lightBlock.signed_header;
-        ValidatorSet.Data memory untrustedVals = lightBlock.validator_set;
+        SignedHeader.Data memory untrustedHeader = tmHeader.signed_header;
+        ValidatorSet.Data memory untrustedVals = tmHeader.validator_set;
 
         bool ok = Tendermint.verify(
 			clientState.trusting_period,
@@ -450,12 +451,12 @@ contract TendermintLightClient is IClient {
         return (ConsensusState.decode(anyConsensusState.value), true);
     }
 
-    function unmarshalLightBlock(bytes memory bz) internal view returns (LightBlock.Data memory header, bool ok) {
+    function unmarshalTmHeader(bytes memory bz) internal view returns (TmHeader.Data memory header, bool ok) {
         Any.Data memory anyHeader = Any.decode(bz);
-        if (keccak256(abi.encodePacked(anyHeader.type_url)) != _pts.lightBlock) {
+        if (keccak256(abi.encodePacked(anyHeader.type_url)) != _pts.tmHeader) {
             return (header, false);
         }
-        return (LightBlock.decode(anyHeader.value), true);
+        return (TmHeader.decode(anyHeader.value), true);
     }
 
     function verifyMembership(

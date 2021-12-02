@@ -229,11 +229,6 @@ message SignedHeader {
   Commit commit = 2;
 }
 
-message LightBlock {
-  SignedHeader        signed_header = 1;
-  ValidatorSet        validator_set = 2;
-}
-
 message TmHeader {
   SignedHeader        signed_header = 1;
   ValidatorSet        validator_set = 2;
