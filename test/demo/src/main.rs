@@ -5,11 +5,13 @@ mod types;
 
 extern crate clap;
 use clap::{App, Arg};
+use secp256k1::{key::PublicKey, key::SecretKey, rand::rngs::OsRng, Secp256k1};
 
 use tokio::time::{sleep, Duration};
 use web3::{
     contract::tokens::Detokenize,
     contract::Options,
+    signing::Key,
     types::{H256, U256},
 };
 
@@ -18,6 +20,7 @@ use ibc;
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
+use std::path::Path;
 use std::str::FromStr;
 
 use futures::try_join;
@@ -25,6 +28,32 @@ use std::error::Error;
 use tendermint_rpc::{Client, HttpClient};
 
 use consts::{IBC_HANDLER_ADDRESS, IBC_HOST_ADDRESS, TENDERMINT_LIGHT_CLIENT_ADDRESS};
+
+fn get_celo_private_key(celo_private_key_path: &str) -> SecretKey {
+    if Path::new(celo_private_key_path).exists() {
+        let mut secret = String::new();
+        let mut ifile = File::open(celo_private_key_path).expect("unable to open file");
+        ifile.read_to_string(&mut secret).expect("unable to read");
+
+        SecretKey::from_slice(&hex::decode(&secret.strip_prefix("0x").unwrap()).unwrap()).unwrap()
+    } else {
+        let secp = Secp256k1::new();
+        let mut rng = OsRng::new().expect("OsRng");
+        let (secret_key, _public_key) = secp.generate_keypair(&mut rng);
+
+        let mut ifile = File::create(celo_private_key_path).unwrap();
+        ifile
+            .write_all(format!("0x{}", hex::encode(&secret_key.as_ref())).as_bytes())
+            .unwrap();
+
+        println!(
+            "[0] generated a new celo private key: {}",
+            celo_private_key_path
+        );
+
+        secret_key
+    }
+}
 
 async fn recv_data_httpclient(
     block: &tendermint::block::Block,
@@ -55,15 +84,18 @@ async fn recv_data(
     _cnt: u64,
     save_header: bool,
 ) -> Result<proto::tendermint::light::TmHeader, Box<dyn Error>> {
+    let sh = types::to_signed_header(signed_header_response.clone().signed_header);
+    let vs = types::to_validator_set(validator_set_response.clone().validators);
+
     if save_header {
-        let path = format!("./header.{}.signed_header.json", block.header.height);
+        let path = format!("../data/header.{}.signed_header.json", block.header.height);
         let mut output = File::create(path)?;
-        let data = serde_json::to_vec_pretty(&signed_header_response.signed_header)?;
+        let data = serde_json::to_vec_pretty(&sh)?;
         output.write_all(&data).unwrap();
 
-        let path = format!("./header.{}.validator_set.json", block.header.height);
+        let path = format!("../data/header.{}.validator_set.json", block.header.height);
         let mut output = File::create(path)?;
-        let data = serde_json::to_vec_pretty(&validator_set_response.validators)?;
+        let data = serde_json::to_vec_pretty(&vs)?;
         output.write_all(&data).unwrap();
     }
 
@@ -89,9 +121,6 @@ async fn recv_data(
     let vs = types::to_validator_set(serde_json::from_str(input2.as_str()).unwrap());
     */
 
-    let sh = types::to_signed_header(signed_header_response.signed_header);
-    let vs = types::to_validator_set(validator_set_response.validators);
-
     let header = types::to_light_block(sh, vs);
 
     Ok(header)
@@ -106,6 +135,7 @@ async fn handle_header<'a, T: web3::Transport>(
     gas: u64,
     celo_usd_price: f64,
     celo_gas_price: f64,
+    celo_private_key_path: &str,
 ) -> Result<proto::tendermint::light::TmHeader, Box<dyn Error>> {
     let trusted_height = match trusted_header.clone() {
         Some(trusted_header) => trusted_header.signed_header.unwrap().header.unwrap().height,
@@ -119,11 +149,14 @@ async fn handle_header<'a, T: web3::Transport>(
         trusted_height
     );
 
-    let sender = types::to_addr("0x47e172F6CfB6c7D01C1574fa3E2Be7CC73269D95".to_string());
-    //let sender = to_addr("0xa89f47c6b463f74d87572b058427da0a13ec5425".to_string());
     let mut options = Options::default();
-    options.gas_price = Some(U256::from("0"));
     options.gas = Some(U256::from(gas as i64));
+
+    let key = get_celo_private_key(&celo_private_key_path);
+    println!(
+        "[0] Celo account address: {:?}",
+        web3::signing::SecretKeyRef::new(&key).address()
+    );
 
     // test
     let handler_contract = eth::load_contract(
@@ -144,16 +177,17 @@ async fn handle_header<'a, T: web3::Transport>(
 
     // create client
     if cnt == 0 {
-        let register_client_response = handler_contract.call_with_confirmations(
+        let register_client_response = handler_contract.signed_call_with_confirmations(
             "registerClient",
             (
                 "07-tendermint".to_string(),
                 types::to_addr(TENDERMINT_LIGHT_CLIENT_ADDRESS.to_string()),
             ),
-            sender,
             options.clone(),
             1,
+            web3::signing::SecretKeyRef::new(&key),
         );
+
         let register_client_reciept: web3::types::TransactionReceipt =
             register_client_response.await.unwrap();
 
@@ -184,7 +218,13 @@ async fn handle_header<'a, T: web3::Transport>(
         };
 
         let client_state = proto::tendermint::light::ClientState {
-            chain_id: header.signed_header.clone().unwrap().header.unwrap().chain_id,
+            chain_id: header
+                .signed_header
+                .clone()
+                .unwrap()
+                .header
+                .unwrap()
+                .chain_id,
             trust_level: Some(proto::tendermint::light::Fraction {
                 numerator: 1,
                 denominator: 3,
@@ -243,12 +283,12 @@ async fn handle_header<'a, T: web3::Transport>(
             Token::Bytes(consensus_state_bytes),
         ]);
 
-        let create_client_result = handler_contract.call_with_confirmations(
+        let create_client_result = handler_contract.signed_call_with_confirmations(
             "createClient",
             tok,
-            sender,
             options.clone(),
             1,
+            web3::signing::SecretKeyRef::new(&key),
         );
         let create_client_reciept: web3::types::TransactionReceipt =
             create_client_result.await.unwrap();
@@ -316,12 +356,12 @@ async fn handle_header<'a, T: web3::Transport>(
             Token::String(client_id.clone()),
             Token::Bytes(serialized_header),
         ]);
-        let update_client_result = handler_contract.call_with_confirmations(
+        let update_client_result = handler_contract.signed_call_with_confirmations(
             "updateClient",
             tok,
-            sender,
             options.clone(),
             1,
+            web3::signing::SecretKeyRef::new(&key),
         );
         let update_client_reciept: web3::types::TransactionReceipt =
             update_client_result.await.unwrap();
@@ -433,6 +473,13 @@ async fn main() -> web3::Result<()> {
 			.required(true)
 			.help("Tendermint RPC endpoint")
 			.takes_value(true))
+		.arg(Arg::with_name("celo-private-key")
+			.long("celo-private-key")
+			.value_name("URL")
+			.default_value("../../scripts/secret")
+			.required(true)
+			.help("Celo secp256k1 private key")
+			.takes_value(true))
 		.arg(Arg::with_name("non-adjecent-mode")
 			.long("non-adjecent-mode")
 			.short("n")
@@ -453,12 +500,9 @@ async fn main() -> web3::Result<()> {
     let non_adjecent_test = matches.occurrences_of("non-adjecent-mode") > 0;
     let save_header = matches.occurrences_of("save") > 0;
     let tendermint_url = matches.value_of("tendermint-url").unwrap();
+    let celo_private_key_path = matches.value_of("celo-private-key").unwrap();
     let celo_url = matches.value_of("celo-url").unwrap();
-    let gas = matches
-        .value_of("gas")
-        .unwrap()
-        .parse::<u64>()
-        .unwrap();
+    let gas = matches.value_of("gas").unwrap().parse::<u64>().unwrap();
     let celo_gas_price = matches
         .value_of("celo-gas-price")
         .unwrap()
@@ -514,6 +558,7 @@ async fn main() -> web3::Result<()> {
                 gas,
                 celo_usd_price,
                 celo_gas_price,
+                celo_private_key_path,
             )
             .await
             .unwrap(),
