@@ -1,30 +1,38 @@
 const HDWalletProvider = require('@truffle/hdwallet-provider')
 
+// local geth node deps
 const mnemonic = 'math razor capable expose worth grape metal sunset metal sudden usage scheme'
 
+// celo testnet deps
+const Web3 = require('web3')
+const ContractKit = require('@celo/contractkit')
+const web3 = new Web3('https://alfajores-forno.celo-testnet.org')
+const kit = ContractKit.newKitFromWeb3(web3)
+const getAccount = require('./scripts/getAccount').getAccount
+
+// get celo testnet account
+async function awaitWrapper () {
+  const account = await getAccount()
+  kit.connection.addAccount(account.privateKey)
+
+  console.log('Celo account addr: ' + account.address)
+}
+awaitWrapper()
+
+// networks configuration
 const celo = {
-    host: '127.0.0.1',
-    port: 8545,
-    network_id: '*',
-    networkCheckTimeout: 100000000,
-    timeoutBlocks: 200,
-    websocket: true,
-    gas: 40000000,
-    provider: () =>
+  host: '127.0.0.1',
+  port: 8545,
+  network_id: '*',
+  networkCheckTimeout: 100000000,
+  timeoutBlocks: 200,
+  websocket: true,
+  gas: 20000000,
+  provider: () =>
     new HDWalletProvider(mnemonic, 'ws://127.0.0.1:3334', 0, 10)
-};
+}
 
 module.exports = {
-  /**
-   * Networks define how you connect to your ethereum client and let you set the
-   * defaults web3 uses to send transactions. If you don't specify one truffle
-   * will spin up a development blockchain for you on port 9545 when you
-   * run `develop` or `test`. You can ask a truffle command to use a specific
-   * network from the command line, e.g
-   *
-   * $ truffle test --network <network-name>
-   */
-
   networks: {
     celo: celo,
     tests: celo,
@@ -32,6 +40,11 @@ module.exports = {
       host: 'localhost',
       port: 8545,
       network_id: '*'
+    },
+    testnet: {
+      gas: 20000000, // current gas limit (as of 2021-12-03)
+      provider: kit.connection.web3.currentProvider, // CeloProvider
+      network_id: 44787 // Alfajores network id (testnet)
     }
   },
   compilers: {

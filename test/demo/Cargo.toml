@@ -22,6 +22,7 @@ futures = "0.3.5"
 tendermint-proto = "0.23"
 prost-helper = "0.2.0"
 clap = "2.33.3"
+secp256k1 = { version = "0.20.3", features = ["rand-std"] }
 
 [build-dependencies]
 tonic-build = "0.4.0"
