@@ -2,6 +2,7 @@ const TendermintLightClient = artifacts.require('TendermintLightClient')
 const IBCHandler = artifacts.require('IBCHandler')
 const IBCHost = artifacts.require('IBCHost')
 const protobuf = require('protobufjs')
+const lib = require('./lib.js')
 
 contract('TendermintLightClient', () => {
   it('verifies ingestion of valid continuous headers', async () => {
@@ -31,18 +32,13 @@ async function ingest(h1, h2) {
       // types
       const ClientState = root.lookupType('tendermint.light.ClientState')
       const ConsensusState = root.lookupType('tendermint.light.ConsensusState')
-      const ValidatorSet = root.lookupType('tendermint.light.ValidatorSet')
-      const SignedHeader = root.lookupType('tendermint.light.SignedHeader')
       const TmHeader = root.lookupType('tendermint.light.TmHeader')
       const Fraction = root.lookupType('tendermint.light.Fraction')
       const Duration = root.lookupType('tendermint.light.Duration')
 
       // core structs
-      const validatorSetObj = require('./data/header.' + h1 + '.validator_set.json')
-      const vs = ValidatorSet.fromObject(validatorSetObj)
-
-      const headerObj = require('./data/header.' + h1 + '.signed_header.json')
-      const sh = SignedHeader.fromObject(headerObj)
+      const [sh, vs] = await lib.readHeader(h1)
+      const [ssh, svs] = await lib.readHeader(h2)
 
       // args
       const clientStateObj = ClientState.create({
@@ -101,7 +97,7 @@ async function ingest(h1, h2) {
       }
 
       // step 2: create client
-      await call(async () => {
+      await lib.call(async () => {
         return await handler.createClient({
           clientType: '07-tendermint',
           height: sh.header.height.low,
@@ -115,11 +111,6 @@ async function ingest(h1, h2) {
       const clientId = events[events.length - 1].returnValues['0']
 
       // step 4: update client
-      const secondHeaderObj = require('./data/header.' + h2 + '.signed_header.json')
-      const ssh = SignedHeader.fromObject(secondHeaderObj)
-
-      const secondValidatorSetObj = require('./data/header.' + h2 + '.validator_set.json')
-      const svs = ValidatorSet.fromObject(secondValidatorSetObj)
       const tmHeader = TmHeader.create({
         signed_header: ssh,
         validator_set: svs,
@@ -134,22 +125,11 @@ async function ingest(h1, h2) {
       })
       const allSerialized = await Any.encode(all).finish()
 
-      await call(async () => {
+      await lib.call(async () => {
         return await handler.updateClient({
           clientId: clientId,
           header: allSerialized
         });
       }, "failed to call updateClient");
     })
-}
-
-async function call(fn, errMsg) {
-      try {
-        const tx = await fn()
-        console.log(tx)
-      } catch (error) {
-        console.log(errMsg)
-        const tx = await web3.eth.getTransaction(error.tx)
-        await web3.eth.call(tx)
-      }
 }

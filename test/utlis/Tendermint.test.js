@@ -1,5 +1,6 @@
 const TendermintMock = artifacts.require('TendermintMock')
 const protobuf = require('protobufjs')
+const lib = require('../lib.js')
 
 contract('TendermintMock', () => {
   it('verifies signed header hash', async () => {
@@ -10,9 +11,8 @@ contract('TendermintMock', () => {
       if (err) { throw err }
 
       const SignedHeader = root.lookupType('tendermint.light.SignedHeader')
-      const signedHeaderObj = require('../data/header.28.signed_header.json')
 
-      const sh = SignedHeader.fromObject(signedHeaderObj)
+      const [sh, vs] = await lib.readHeader(28);
       const encoded = SignedHeader.encode(sh).finish()
 
       const expectedHash = '0x' + Buffer.from(sh.commit.block_id.hash).toString('hex')
@@ -30,9 +30,8 @@ contract('TendermintMock', () => {
       if (err) { throw err }
 
       const ValidatorSet = root.lookupType('tendermint.light.ValidatorSet')
-      const validatorSetObj = require('../data/header.28.validator_set.json')
-      const vs = ValidatorSet.fromObject(validatorSetObj)
 
+      const [sh, vs] = await lib.readHeader(28);
       const encoded = await ValidatorSet.encode(vs).finish()
       const votingPower = await mock.totalVotingPower.call(encoded)
 
@@ -48,9 +47,8 @@ contract('TendermintMock', () => {
       if (err) { throw err }
 
       const ValidatorSet = root.lookupType('tendermint.light.ValidatorSet')
-      const validatorSetObj = require('../data/header.28.validator_set.json')
-      const vs = ValidatorSet.fromObject(validatorSetObj)
 
+      const [sh, vs] = await lib.readHeader(28);
       const encoded = await ValidatorSet.encode(vs).finish()
       var { 0: index, 1: found } = await mock.getByAddress.call(encoded, vs.validators[0].address)
 
@@ -72,24 +70,13 @@ contract('TendermintMock', () => {
       if (err) { throw err }
 
       const ValidatorSet = root.lookupType('tendermint.light.ValidatorSet')
-      const validatorSetObj = require('../data/header.28.validator_set.json')
-      const vs = ValidatorSet.fromObject(validatorSetObj)
 
-      const SignedHeader = root.lookupType('tendermint.light.SignedHeader')
-      const signedHeaderObj = require('../data/header.28.signed_header.json')
-      const sh = SignedHeader.fromObject(signedHeaderObj)
-
+      const [sh, vs] = await lib.readHeader(28);
       const encoded = await ValidatorSet.encode(vs).finish()
       const hash = await mock.validatorSetHash.call(encoded)
-      const expected = toHexString(sh.header.validators_hash)
+      const expected = lib.toHexString(sh.header.validators_hash)
 
       assert.equal(expected, hash, 'invalid validator hash')
     })
   })
 })
-
-function toHexString (byteArray) {
-  return '0x' + Array.from(byteArray, function (byte) {
-    return ('0' + (byte & 0xFF).toString(16)).slice(-2)
-  }).join('')
-}
