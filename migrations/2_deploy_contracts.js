@@ -3,11 +3,13 @@ function deployMocks(deployer) {
 	const Ed25519Mock = artifacts.require("Ed25519Mock");
 	const MerkleTreeMock = artifacts.require("MerkleTreeMock");
 	const TendermintMock = artifacts.require("TendermintMock");
+	const ProtoMock = artifacts.require("ProtoMock");
 
     deployer.deploy(Secp256k1Mock);
     deployer.deploy(Ed25519Mock);
     deployer.deploy(MerkleTreeMock);
     deployer.deploy(TendermintMock);
+    deployer.deploy(ProtoMock);
 }
 
 function deployLightClient(deployer) {
