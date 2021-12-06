@@ -2,69 +2,40 @@
 
 pragma solidity ^0.8.2;
 
-import {TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS, Validator, SimpleValidator, BlockID, Vote, CanonicalBlockID, CanonicalPartSetHeader, CanonicalVote, TmHeader, ConsensusState, MerkleRoot, Commit, CommitSig, SignedHeader, ValidatorSet, Duration, Timestamp, Consensus} from "./TendermintLight.sol";
+import {TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS, Validator, CanonicalBlockID, CanonicalVote, TmHeader, ConsensusState, Commit, CommitSig, SignedHeader, ValidatorSet, Duration, Timestamp, Consensus} from "./TendermintLight.sol";
 import "./Encoder.sol";
 import "../utils/crypto/MerkleTree.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 library TendermintHelper {
-    function toSimpleValidator(Validator.Data memory val) internal pure returns (SimpleValidator.Data memory) {
-        return SimpleValidator.Data({pub_key: val.pub_key, voting_power: val.voting_power});
-    }
-
-    function toCanonicalBlockID(BlockID.Data memory blockID) internal pure returns (CanonicalBlockID.Data memory) {
-        return
-            CanonicalBlockID.Data({
-                hash: blockID.hash,
-                part_set_header: CanonicalPartSetHeader.Data({
-                    total: blockID.part_set_header.total,
-                    hash: blockID.part_set_header.hash
-                })
-            });
-    }
-
-    function toCanonicalVote(Vote.Data memory vote, string memory chainID)
-        internal
-        pure
-        returns (CanonicalVote.Data memory)
-    {
-        return
-            CanonicalVote.Data({
-                Type: vote.Type,
-                height: vote.height,
-                round: int64(vote.round),
-                block_id: toCanonicalBlockID(vote.block_id),
-                timestamp: vote.timestamp,
-                chain_id: chainID
-            });
+    function toSimpleValidatorEncoded(Validator.Data memory val) internal pure returns (bytes memory) {
+        return Encoder.encodeNew(val);
     }
 
     function toConsensusState(TmHeader.Data memory tmHeader) internal pure returns (ConsensusState.Data memory) {
         return
             ConsensusState.Data({
                 timestamp: tmHeader.signed_header.header.time,
-                root: MerkleRoot.Data({hash: tmHeader.signed_header.header.app_hash}),
+                merkle_root_hash: tmHeader.signed_header.header.app_hash,
                 next_validators_hash: tmHeader.signed_header.header.next_validators_hash
             });
     }
 
-    function toVote(Commit.Data memory commit, uint256 valIdx) internal pure returns (Vote.Data memory) {
+    function toCanonicalVote(Commit.Data memory commit, uint256 valIdx, string memory chainID) internal pure returns (CanonicalVote.Data memory) {
         CommitSig.Data memory commitSig = commit.signatures[valIdx];
 
         return
-            Vote.Data({
+            CanonicalVote.Data({
                 Type: TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT,
                 height: commit.height,
-                round: commit.round,
+                round: int64(commit.round),
                 block_id: commit.block_id,
                 timestamp: commitSig.timestamp,
-                validator_address: commitSig.validator_address,
-                validator_index: SafeCast.toInt32(int256(valIdx)),
-                signature: commitSig.signature
+                chain_id: chainID
             });
     }
 
-    function isEqual(BlockID.Data memory b1, BlockID.Data memory b2) internal pure returns (bool) {
+    function isEqual(CanonicalBlockID.Data memory b1, CanonicalBlockID.Data memory b2) internal pure returns (bool) {
         if (keccak256(abi.encodePacked(b1.hash)) != keccak256(abi.encodePacked(b2.hash))) {
             return false;
         }
@@ -118,7 +89,7 @@ library TendermintHelper {
 
         bytes memory hbz = Consensus.encode(h.header.version);
         bytes memory pbt = Timestamp.encode(h.header.time);
-        bytes memory bzbi = BlockID.encode(h.header.last_block_id);
+        bytes memory bzbi = CanonicalBlockID.encode(h.header.last_block_id);
 
         bytes[14] memory all = [
             hbz,

@@ -48,14 +48,8 @@ message ConsensusState {
   Timestamp timestamp = 1;
 
   // commitment root (i.e app hash)
-  MerkleRoot root = 2;
+  bytes merkle_root_hash = 2;
   bytes next_validators_hash = 3;
-}
-
-// MerkleRoot defines a merkle root hash.
-// In the Cosmos SDK, the AppHash of a block header becomes the root.
-message MerkleRoot {
-  bytes hash = 1;
 }
 
 enum BlockIDFlag {
@@ -77,7 +71,7 @@ enum SignedMsgType {
 
 message CanonicalPartSetHeader {
   uint32 total = 1;
-  bytes  hash  = 2;
+  bytes hash = 2;
 }
 
 message CanonicalBlockID {
@@ -94,57 +88,21 @@ message CanonicalVote {
   string chain_id = 6;
 }
 
-message Vote {
-  SignedMsgType type = 1;
-  int64 height = 2;
-  int32 round = 3;
-  BlockID block_id = 4;
-  Timestamp timestamp = 5;
-  bytes validator_address = 6;
-  int32 validator_index = 7;
-  bytes signature = 8;
-}
-
 message ValidatorSet {
   repeated Validator validators = 1;
-  Validator proposer = 2;
-  int64 total_voting_power = 3;
+  int64 total_voting_power = 2;
 }
 
 message Validator {
   bytes address = 1;
-  PublicKey pub_key = 2;
+  bytes pub_key = 2;
   int64 voting_power = 3;
-  int64 proposer_priority = 4;
-}
-
-message SimpleValidator {
-  PublicKey pub_key = 1;
-  int64 voting_power = 2;
-}
-
-message PublicKey {
-  oneof sum {
-    bytes ed25519 = 1;
-    bytes secp256k1 = 2;
-    bytes sr25519 = 3;
-  }
-}
-
-message PartSetHeader {
-  uint32 total = 1;
-  bytes hash= 2;
-}
-
-message BlockID {
-  bytes hash = 1;
-  PartSetHeader part_set_header = 2;
 }
 
 message Commit {
   int64 height = 1;
   int32 round = 2;
-  BlockID block_id = 3;
+  CanonicalBlockID block_id = 3;
   repeated CommitSig signatures = 4;
 }
 
@@ -170,11 +128,11 @@ message Timestamp {
 }
 
 message LightHeader {
-  Consensus version  = 1;
+  Consensus version = 1;
   string chain_id = 2;
   int64 height = 3;
   Timestamp time = 4;
-  BlockID last_block_id = 5;
+  CanonicalBlockID last_block_id = 5;
   bytes last_commit_hash = 6;  // commit from validators from the last block
   bytes data_hash = 7;  // transactions
   bytes validators_hash = 8;   // validators for the current block

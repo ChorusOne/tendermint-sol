@@ -2,19 +2,19 @@ use std::convert::TryInto;
 use web3::types::H160;
 
 use crate::proto::tendermint::light::{
-    BlockId, BlockIdFlag, CommitSig, Consensus, Duration, PartSetHeader, PublicKey, SignedHeader,
-    Timestamp, TmHeader, Validator, ValidatorSet,
+    CanonicalPartSetHeader, BlockIdFlag, CommitSig, Consensus, Duration, SignedHeader,
+    Timestamp, TmHeader, Validator, ValidatorSet, CanonicalBlockId
 };
 
-pub fn to_part_set_header(part_set_header: &tendermint::block::parts::Header) -> PartSetHeader {
-    PartSetHeader {
+pub fn to_part_set_header(part_set_header: &tendermint::block::parts::Header) -> CanonicalPartSetHeader {
+    CanonicalPartSetHeader {
         total: part_set_header.total,
         hash: part_set_header.hash.as_bytes().to_vec(),
     }
 }
 
-pub fn to_block_id(last_block_id: &tendermint::block::Id) -> BlockId {
-    BlockId {
+pub fn to_block_id(last_block_id: &tendermint::block::Id) -> CanonicalBlockId {
+    CanonicalBlockId {
         hash: last_block_id.hash.as_bytes().to_vec(),
         part_set_header: Some(to_part_set_header(&last_block_id.part_set_header)),
     }
@@ -105,16 +105,10 @@ pub fn to_validator_set(validators: &[tendermint::validator::Info]) -> Validator
             .iter()
             .map(|validator| Validator {
                 address: validator.address.into(),
-                pub_key: Some(PublicKey {
-                    sum: Some(crate::proto::tendermint::light::public_key::Sum::Ed25519(
-                        validator.pub_key.to_bytes().to_vec(),
-                    )),
-                }),
+                pub_key: validator.pub_key.to_bytes().to_vec(),
                 voting_power: validator.power.into(),
-                proposer_priority: validator.proposer_priority.into(),
             })
             .collect(),
-        proposer: None,
         total_voting_power: 0,
     }
 }

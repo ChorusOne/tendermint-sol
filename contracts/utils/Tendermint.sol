@@ -2,11 +2,10 @@
 
 pragma solidity ^0.8.2;
 
-import {TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS, SignedHeader, BlockID, Timestamp, ValidatorSet, Duration, Fraction, Commit, Validator, CommitSig, CanonicalVote, Vote} from "../proto/TendermintLight.sol";
+import {TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS, SignedHeader, CanonicalBlockID, Timestamp, ValidatorSet, Duration, Fraction, Commit, Validator, CommitSig, CanonicalVote} from "../proto/TendermintLight.sol";
 import "../proto/TendermintHelper.sol";
 import "../proto/Encoder.sol";
 import "./crypto/Ed25519.sol";
-import "./crypto/Secp256k1.sol";
 import "./Bytes.sol";
 
 library Tendermint {
@@ -14,9 +13,8 @@ library Tendermint {
     using TendermintHelper for ValidatorSet.Data;
     using TendermintHelper for SignedHeader.Data;
     using TendermintHelper for Timestamp.Data;
-    using TendermintHelper for BlockID.Data;
+    using TendermintHelper for CanonicalBlockID.Data;
     using TendermintHelper for Commit.Data;
-    using TendermintHelper for Vote.Data;
 
     function verify(
         Duration.Data memory trustingPeriod,
@@ -225,7 +223,7 @@ library Tendermint {
     function verifyCommitLight(
         ValidatorSet.Data memory vals,
         string memory chainID,
-        BlockID.Data memory blockID,
+        CanonicalBlockID.Data memory blockID,
         int64 height,
         Commit.Data memory commit
     ) internal view returns (bool) {
@@ -274,17 +272,7 @@ library Tendermint {
         bytes memory message,
         bytes memory sig
     ) internal view returns (bool) {
-        bytes memory pubkey;
-
-        if (val.pub_key.ed25519.length > 0) {
-            pubkey = val.pub_key.ed25519;
-            return Ed25519.verify(message, pubkey, sig);
-        } else if (val.pub_key.secp256k1.length > 0) {
-            pubkey = val.pub_key.secp256k1;
-            return Secp256k1.verify(message, pubkey, sig);
-        }
-
-        return false;
+        return Ed25519.verify(message, val.pub_key, sig);
     }
 
     function voteSignBytes(
@@ -292,10 +280,7 @@ library Tendermint {
         string memory chainID,
         uint256 idx
     ) internal pure returns (bytes memory) {
-        Vote.Data memory vote;
-        vote = commit.toVote(idx);
-
-        return (CanonicalVote.encode(vote.toCanonicalVote(chainID)));
+        return (CanonicalVote.encode(commit.toCanonicalVote(idx,chainID)));
     }
 
     function voteSignBytesDelim(

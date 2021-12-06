@@ -225,7 +225,7 @@ contract TendermintLightClient is IClient {
         if (!found) {
             return false;
         }
-        return verifyMembership(proof, consensusState.root.hash.toBytes32(), prefix, IBCIdentifier.connectionCommitmentSlot(connectionId), keccak256(connectionBytes));
+        return verifyMembership(proof, consensusState.merkle_root_hash.toBytes32(), prefix, IBCIdentifier.connectionCommitmentSlot(connectionId), keccak256(connectionBytes));
     }
 
     function verifyChannelState(
@@ -253,7 +253,7 @@ contract TendermintLightClient is IClient {
         if (!found) {
             return false;
         }
-        return verifyMembership(proof, consensusState.root.hash.toBytes32(), prefix, IBCIdentifier.channelCommitmentSlot(portId, channelId), keccak256(channelBytes));
+        return verifyMembership(proof, consensusState.merkle_root_hash.toBytes32(), prefix, IBCIdentifier.channelCommitmentSlot(portId, channelId), keccak256(channelBytes));
     }
 
     function verifyPacketCommitment(
@@ -287,7 +287,7 @@ contract TendermintLightClient is IClient {
         if (!found) {
             return false;
         }
-        return verifyMembership(proof, consensusState.root.hash.toBytes32(), prefix, IBCIdentifier.packetCommitmentSlot(portId, channelId, sequence), commitmentBytes);
+        return verifyMembership(proof, consensusState.merkle_root_hash.toBytes32(), prefix, IBCIdentifier.packetCommitmentSlot(portId, channelId, sequence), commitmentBytes);
     }
 
     function verifyPacketAcknowledgement(
@@ -310,7 +310,7 @@ contract TendermintLightClient is IClient {
         if (!validateDelayPeriod(host, clientId, height, delayPeriodTime, delayPeriodBlocks)) {
             return false;
         }
-        bytes32 stateRoot = mustGetConsensusState(host, clientId, height).root.hash.toBytes32();
+        bytes32 stateRoot = mustGetConsensusState(host, clientId, height).merkle_root_hash.toBytes32();
         bytes32 ackCommitmentSlot = IBCIdentifier.packetAcknowledgementCommitmentSlot(portId, channelId, sequence);
         bytes32 ackCommitment = host.makePacketAcknowledgementCommitment(acknowledgement);
         return verifyMembership(proof, stateRoot, prefix, ackCommitmentSlot, ackCommitment);
@@ -340,7 +340,7 @@ contract TendermintLightClient is IClient {
         if (!found) {
             return false;
         }
-        return verifyMembership(proof, consensusState.root.hash.toBytes32(), prefix, IBCIdentifier.clientStateCommitmentSlot(counterpartyClientIdentifier), keccak256(clientStateBytes));
+        return verifyMembership(proof, consensusState.merkle_root_hash.toBytes32(), prefix, IBCIdentifier.clientStateCommitmentSlot(counterpartyClientIdentifier), keccak256(clientStateBytes));
     }
 
     function verifyClientConsensusState(
@@ -368,7 +368,7 @@ contract TendermintLightClient is IClient {
         if (!found) {
             return false;
         }
-        return verifyMembership(proof, consensusState.root.hash.toBytes32(), prefix, IBCIdentifier.consensusStateCommitmentSlot(counterpartyClientIdentifier, consensusHeight), keccak256(consensusStateBytes));
+        return verifyMembership(proof, consensusState.merkle_root_hash.toBytes32(), prefix, IBCIdentifier.consensusStateCommitmentSlot(counterpartyClientIdentifier, consensusHeight), keccak256(consensusStateBytes));
     }
 
     function validateArgs(ClientState.Data memory cs, uint64 height, bytes memory prefix, bytes memory proof) internal pure returns (bool) {

@@ -196,9 +196,7 @@ async fn handle_header<'a, T: web3::Transport>(
         };
 
         let consensus_state = ConsensusState {
-            root: Some(proto::tendermint::light::MerkleRoot {
-                hash: header.app_hash.to_owned(),
-            }),
+            merkle_root_hash: header.app_hash.to_owned(),
             timestamp: header.time.to_owned(),
             next_validators_hash: header.next_validators_hash.to_owned(),
         };
@@ -411,8 +409,7 @@ async fn main() -> web3::Result<()> {
 			.value_name("HEIGHT")
 			.required(false)
 			.help("Start form given block height")
-			.takes_value(true))
-		.get_matches();
+			.takes_value(true)).get_matches();
 
     let max_headers = matches
         .value_of("max-headers")
