@@ -2,65 +2,29 @@ mod consts;
 mod eth;
 mod proto;
 mod types;
+mod util;
 
 extern crate clap;
 use clap::{App, Arg};
-use secp256k1::{key::PublicKey, key::SecretKey, rand::rngs::OsRng, Secp256k1};
 
 use tokio::time::{sleep, Duration};
-use web3::{
-    contract::tokens::Detokenize,
-    contract::Options,
-    signing::Key,
-    types::{H256, U256},
-};
+use web3::{contract::Options, signing::Key, types::U256};
 
 use ethabi::Token;
 use ibc;
-use std::fs::File;
-use std::io::Read;
-use std::io::Write;
-use std::path::Path;
-use std::str::FromStr;
+use std::{error::Error, fs::File, io::Write};
 
 use futures::try_join;
-use std::error::Error;
+use proto::tendermint::light::{ClientState, ConsensusState, Fraction, TmHeader};
 use tendermint_rpc::{Client, HttpClient};
 
 use consts::{IBC_HANDLER_ADDRESS, IBC_HOST_ADDRESS, TENDERMINT_LIGHT_CLIENT_ADDRESS};
 
-fn get_celo_private_key(celo_private_key_path: &str) -> SecretKey {
-    if Path::new(celo_private_key_path).exists() {
-        let mut secret = String::new();
-        let mut ifile = File::open(celo_private_key_path).expect("unable to open file");
-        ifile.read_to_string(&mut secret).expect("unable to read");
-
-        SecretKey::from_slice(&hex::decode(&secret.strip_prefix("0x").unwrap()).unwrap()).unwrap()
-    } else {
-        let secp = Secp256k1::new();
-        let mut rng = OsRng::new().expect("OsRng");
-        let (secret_key, _public_key) = secp.generate_keypair(&mut rng);
-
-        let mut ifile = File::create(celo_private_key_path).unwrap();
-        ifile
-            .write_all(format!("0x{}", hex::encode(&secret_key.as_ref())).as_bytes())
-            .unwrap();
-
-        println!(
-            "[0] generated a new celo private key: {}",
-            celo_private_key_path
-        );
-
-        secret_key
-    }
-}
-
 async fn recv_data_httpclient(
     block: &tendermint::block::Block,
     client: &mut HttpClient,
-    _cnt: u64,
     save_header: bool,
-) -> Result<proto::tendermint::light::TmHeader, Box<dyn Error>> {
+) -> Result<TmHeader, Box<dyn Error>> {
     let commit_future = client.commit(block.header.height);
     let validator_set_future = client.validators(block.header.height, tendermint_rpc::Paging::All);
 
@@ -71,7 +35,6 @@ async fn recv_data_httpclient(
         block,
         signed_header_response,
         validator_set_response,
-        _cnt,
         save_header,
     )
     .await
@@ -81,78 +44,64 @@ async fn recv_data(
     block: &tendermint::block::Block,
     signed_header_response: tendermint_rpc::endpoint::commit::Response,
     validator_set_response: tendermint_rpc::endpoint::validators::Response,
-    _cnt: u64,
     save_header: bool,
-) -> Result<proto::tendermint::light::TmHeader, Box<dyn Error>> {
-    let sh = types::to_signed_header(signed_header_response.clone().signed_header);
-    let vs = types::to_validator_set(validator_set_response.clone().validators);
+) -> Result<TmHeader, Box<dyn Error>> {
+    let sh = types::to_signed_header(&signed_header_response.signed_header);
+    let vs = types::to_validator_set(&validator_set_response.validators);
 
     if save_header {
         let path = format!("../data/header.{}.signed_header.json", block.header.height);
         let mut output = File::create(path)?;
         let data = serde_json::to_vec_pretty(&sh)?;
-        output.write_all(&data).unwrap();
+        output.write_all(&data)?;
 
         let path = format!("../data/header.{}.validator_set.json", block.header.height);
         let mut output = File::create(path)?;
         let data = serde_json::to_vec_pretty(&vs)?;
-        output.write_all(&data).unwrap();
+        output.write_all(&data)?;
     }
 
-    /* READ FROM FILE
-    let mut input = String::new();
-    let mut input2 = String::new();
-    if _cnt == 0 {
-    let mut ifile = File::open("./header.1358.signed_header.json").expect("unable to open file");
-    ifile.read_to_string(&mut input).expect("unable to read");
-
-    let mut ifile = File::open("./header.1358.validator_set.json").expect("unable to open file");
-    ifile.read_to_string(&mut input2).expect("unable to read");
-
-    } else {
-    let mut ifile = File::open("./header.1359.signed_header.json").expect("unable to open file");
-    ifile.read_to_string(&mut input).expect("unable to read");
-
-    let mut ifile = File::open("./header.1359.validator_set.json").expect("unable to open file");
-    ifile.read_to_string(&mut input2).expect("unable to read");
-    }
-
-    let sh = types::to_signed_header(serde_json::from_str(input.as_str()).unwrap());
-    let vs = types::to_validator_set(serde_json::from_str(input2.as_str()).unwrap());
-    */
-
-    let header = types::to_light_block(sh, vs);
-
-    Ok(header)
+    Ok(types::to_light_block(&sh, &vs))
 }
 
 async fn handle_header<'a, T: web3::Transport>(
     transport: &'a T,
-    trusted_header: Option<proto::tendermint::light::TmHeader>,
-    header: proto::tendermint::light::TmHeader,
+    trusted_tm_header: Option<TmHeader>,
+    tm_header: TmHeader,
     cnt: u64,
     non_adjecent_test: bool,
     gas: u64,
     celo_usd_price: f64,
     celo_gas_price: f64,
     celo_private_key_path: &str,
-) -> Result<proto::tendermint::light::TmHeader, Box<dyn Error>> {
-    let trusted_height = match trusted_header.clone() {
-        Some(trusted_header) => trusted_header.signed_header.unwrap().header.unwrap().height,
+    client_id: Option<&str>,
+) -> Result<TmHeader, Box<dyn Error>> {
+    let trusted_height = match trusted_tm_header.as_ref() {
+        Some(trusted_header) => {
+            trusted_header
+                .signed_header
+                .as_ref()
+                .unwrap()
+                .header
+                .as_ref()
+                .unwrap()
+                .height
+        }
         None => 0,
     };
 
+    let signed_header = tm_header.signed_header.as_ref().unwrap();
+    let header = signed_header.header.as_ref().unwrap();
+
     println!(
         "\n[0][header] height = {:?} cnt = {:?} trusted_height = {:?}",
-        header.clone().signed_header.unwrap().header.unwrap().height,
-        cnt,
-        trusted_height
+        header.height, cnt, trusted_height
     );
 
     let mut options = Options::default();
     options.gas = Some(U256::from(gas as i64));
 
-    let key = get_celo_private_key(&celo_private_key_path);
+    let key = util::get_celo_private_key(&celo_private_key_path)?;
     println!(
         "[0] Celo account address: {:?}",
         web3::signing::SecretKeyRef::new(&key).address()
@@ -163,12 +112,12 @@ async fn handle_header<'a, T: web3::Transport>(
         &transport,
         "../../build/contracts/IBCHandler.json",
         IBC_HANDLER_ADDRESS,
-    );
+    )?;
     let host_contract = eth::load_contract(
         &transport,
         "../../build/contracts/IBCHost.json",
         IBC_HOST_ADDRESS,
-    );
+    )?;
     let _tendermint_contract = eth::load_contract(
         &transport,
         "../../build/contracts/TendermintLightClient.json",
@@ -189,7 +138,7 @@ async fn handle_header<'a, T: web3::Transport>(
         );
 
         let register_client_reciept: web3::types::TransactionReceipt =
-            register_client_response.await.unwrap();
+            register_client_response.await?;
 
         match register_client_reciept.status {
             Some(status) => {
@@ -204,7 +153,7 @@ async fn handle_header<'a, T: web3::Transport>(
                         "07-tendermint"
                     );
                 }
-                calculate_and_display_fee(
+                util::calculate_and_display_fee(
                     "[1][register-client][]",
                     "".to_string(),
                     &transport,
@@ -217,68 +166,39 @@ async fn handle_header<'a, T: web3::Transport>(
             None => panic!("unkown outcome - cannot determine if client is registered already?"),
         };
 
-        let client_state = proto::tendermint::light::ClientState {
-            chain_id: header
-                .signed_header
-                .clone()
-                .unwrap()
-                .header
-                .unwrap()
-                .chain_id,
-            trust_level: Some(proto::tendermint::light::Fraction {
+        let client_state = ClientState {
+            chain_id: header.chain_id.to_owned(),
+            trust_level: Some(Fraction {
                 numerator: 1,
                 denominator: 3,
             }),
-            trusting_period: Some(proto::tendermint::light::Duration {
-                seconds: 100000000000,
-                nanos: 0,
-            }),
-            unbonding_period: Some(proto::tendermint::light::Duration {
-                seconds: 100000000000,
-                nanos: 0,
-            }),
-            max_clock_drift: Some(proto::tendermint::light::Duration {
-                seconds: 100000000000,
-                nanos: 0,
-            }),
+            trusting_period: Some(types::to_duration(100000000000, 0)),
+            unbonding_period: Some(types::to_duration(100000000000, 0)),
+            max_clock_drift: Some(types::to_duration(100000000000, 0)),
             frozen_height: 0,
-            latest_height: header.signed_header.clone().unwrap().header.unwrap().height,
+            latest_height: header.height,
             allow_update_after_expiry: true,
             allow_update_after_misbehaviour: true,
         };
 
-        let consensus_state = proto::tendermint::light::ConsensusState {
+        let consensus_state = ConsensusState {
             root: Some(proto::tendermint::light::MerkleRoot {
-                hash: header
-                    .clone()
-                    .signed_header
-                    .unwrap()
-                    .header
-                    .unwrap()
-                    .app_hash,
+                hash: header.app_hash.to_owned(),
             }),
-            timestamp: header.clone().signed_header.unwrap().header.unwrap().time,
-            next_validators_hash: header
-                .clone()
-                .signed_header
-                .unwrap()
-                .header
-                .unwrap()
-                .next_validators_hash,
+            timestamp: header.time.to_owned(),
+            next_validators_hash: header.next_validators_hash.to_owned(),
         };
 
         let consensus_state_bytes =
-            proto::prost_serialize_any(&consensus_state, "/tendermint.types.ConsensusState")
-                .unwrap();
+            proto::prost_serialize_any(&consensus_state, "/tendermint.types.ConsensusState")?;
+
         let client_state_bytes =
-            proto::prost_serialize_any(&client_state, "/tendermint.types.ClientState").unwrap();
+            proto::prost_serialize_any(&client_state, "/tendermint.types.ClientState")?;
 
         // MsgCreateClient
         let tok = ethabi::Token::Tuple(vec![
             Token::String("07-tendermint".to_string()),
-            Token::Uint(U256::from(
-                header.clone().signed_header.unwrap().header.unwrap().height,
-            )),
+            Token::Uint(U256::from(header.height)),
             Token::Bytes(client_state_bytes),
             Token::Bytes(consensus_state_bytes),
         ]);
@@ -290,8 +210,7 @@ async fn handle_header<'a, T: web3::Transport>(
             1,
             web3::signing::SecretKeyRef::new(&key),
         );
-        let create_client_reciept: web3::types::TransactionReceipt =
-            create_client_result.await.unwrap();
+        let create_client_reciept: web3::types::TransactionReceipt = create_client_result.await?;
         match create_client_reciept.status {
             Some(status) => {
                 if status == web3::types::U64([1 as u64]) {
@@ -305,7 +224,7 @@ async fn handle_header<'a, T: web3::Transport>(
                         "07-tendermint"
                     );
                 }
-                calculate_and_display_fee(
+                util::calculate_and_display_fee(
                     "[2][create-client]",
                     "".to_string(),
                     &transport,
@@ -318,15 +237,18 @@ async fn handle_header<'a, T: web3::Transport>(
             None => panic!("unkown outcome - dunno "),
         };
 
-        Ok(header)
+        Ok(tm_header)
     } else if cnt == 1 && non_adjecent_test {
-        Ok(trusted_header.unwrap())
+        Ok(trusted_tm_header.unwrap())
     } else {
-        let client_id = eth::get_client_ids(&transport, &host_contract)
-            .await?
-            .last()
-            .unwrap()
-            .to_string();
+        let client_id = match client_id {
+            Some(id) => id.to_string(),
+            None => eth::get_client_ids(&transport, &host_contract)
+                .await?
+                .last()
+                .unwrap()
+                .to_string(),
+        };
 
         // TODO: proofs
         //const IBC_QUERY_PATH: &str = "store/ibc/key";
@@ -340,16 +262,16 @@ async fn handle_header<'a, T: web3::Transport>(
         //.abci_query(Some(path), client_state_path.into_bytes(), Some(tendermint::block::Height::from(trusted_height as u32)), true)
         //.await.unwrap();
 
-        let trusted = trusted_header.unwrap();
-        let tm_header = proto::tendermint::light::TmHeader {
-            signed_header: header.signed_header.clone(),
-            validator_set: header.validator_set.clone(),
+        let trusted = trusted_tm_header.unwrap();
+        let tm_header = TmHeader {
+            signed_header: Some(signed_header.to_owned()),
+            validator_set: tm_header.validator_set.to_owned(),
             trusted_height: trusted_height,
-            trusted_validators: trusted.validator_set.clone(),
+            trusted_validators: trusted.validator_set.to_owned(),
         };
 
         let serialized_header =
-            proto::prost_serialize_any(&tm_header, "/tendermint.types.TmHeader").unwrap();
+            proto::prost_serialize_any(&tm_header, "/tendermint.types.TmHeader")?;
 
         // MsgUpdateClient
         let tok = ethabi::Token::Tuple(vec![
@@ -363,8 +285,7 @@ async fn handle_header<'a, T: web3::Transport>(
             1,
             web3::signing::SecretKeyRef::new(&key),
         );
-        let update_client_reciept: web3::types::TransactionReceipt =
-            update_client_result.await.unwrap();
+        let update_client_reciept: web3::types::TransactionReceipt = update_client_result.await?;
 
         match update_client_reciept.status {
             Some(status) => {
@@ -379,7 +300,7 @@ async fn handle_header<'a, T: web3::Transport>(
                         client_id, update_client_reciept.transaction_hash
                     );
                 }
-                calculate_and_display_fee(
+                util::calculate_and_display_fee(
                     "[3][update-client]",
                     client_id,
                     &transport,
@@ -392,39 +313,8 @@ async fn handle_header<'a, T: web3::Transport>(
             None => panic!("unkown outcome - dunno "),
         };
 
-        Ok(header)
+        Ok(tm_header)
     }
-}
-
-async fn calculate_and_display_fee<'a, T: web3::Transport>(
-    prefix: &'a str,
-    client_id: String,
-    transport: &T,
-    reciept: &web3::types::TransactionReceipt,
-    celo_usd_price: f64,
-    celo_gas_price: f64,
-) {
-    let web3 = web3::Web3::new(&transport);
-    let tx: web3::types::Transaction = web3
-        .eth()
-        .transaction(web3::types::TransactionId::Hash(reciept.transaction_hash))
-        .await
-        .unwrap()
-        .unwrap();
-
-    let gas_price = if tx.gas_price.as_u64() == 0 {
-        celo_gas_price
-    } else {
-        tx.gas_price.as_u64() as f64
-    }; // wei
-    let gas_used = reciept.gas_used.unwrap().as_u64();
-    let fee = (gas_price * gas_used as f64) / 1e18;
-    let fee_usd = celo_usd_price * fee;
-
-    println!(
-        "{}[{}] gas: {}, gas_used: {}; gas_price: {}; fee(CELO): {}; fee(USD): {}",
-        prefix, client_id, tx.gas, gas_used, gas_price, fee, fee_usd
-    );
 }
 
 #[tokio::main]
@@ -490,6 +380,18 @@ async fn main() -> web3::Result<()> {
 			.short("s")
 			.help("If present, block headers and validator set are saved to file")
 			.takes_value(false))
+		.arg(Arg::with_name("client-id")
+			.long("client-id")
+			.value_name("CLIENT_ID")
+			.required(false)
+			.help("IBC Client ID")
+			.takes_value(true))
+		.arg(Arg::with_name("from-height")
+			.long("from-height")
+			.value_name("HEIGHT")
+			.required(false)
+			.help("Start form given block height")
+			.takes_value(true))
 		.get_matches();
 
     let max_headers = matches
@@ -502,6 +404,8 @@ async fn main() -> web3::Result<()> {
     let tendermint_url = matches.value_of("tendermint-url").unwrap();
     let celo_private_key_path = matches.value_of("celo-private-key").unwrap();
     let celo_url = matches.value_of("celo-url").unwrap();
+    let client_id = matches.value_of("client-id");
+    let from_height = matches.value_of("from-height");
     let gas = matches.value_of("gas").unwrap().parse::<u64>().unwrap();
     let celo_gas_price = matches
         .value_of("celo-gas-price")
@@ -518,35 +422,44 @@ async fn main() -> web3::Result<()> {
     let transport = web3::transports::Http::new(celo_url).unwrap();
     let mut client = tendermint_rpc::HttpClient::new(tendermint_url).unwrap();
 
-    let mut last_height: u64 = 0;
-    let mut header: Option<proto::tendermint::light::TmHeader> = None;
-    for cnt in 0..max_headers {
-        let mut block = client.latest_block().await.unwrap().block;
+    let mut cnt: u64 = 0;
+    let last_height: u64 = match from_height {
+        Some(height) => client.block(tendermint::block::Height::from(
+            height.parse::<u64>().unwrap() as u32,
+        )),
+        None => client.latest_block(),
+    }
+    .await
+    .unwrap()
+    .block
+    .header
+    .height
+    .into();
 
-        let mut header_height: u64 = block.header.height.into();
+    let mut header: Option<TmHeader> = None;
+    for h in last_height..last_height + max_headers {
+        let mut block: Option<tendermint::block::Block> = None;
 
         // try 10 times to get next header
         // NOTE: we could use websocket client subscription, but public node providers doesn't seem
         // to expose the websocket endpoint, so this is more universal approach
         for _ in 1..10 {
-            if last_height == 0 {
-                break;
-            }
+            let r = client
+                .block(tendermint::block::Height::from(h as u32))
+                .await;
 
-            sleep(Duration::from_secs(2)).await;
-
-            if header_height <= last_height {
-                block = client.latest_block().await.unwrap().block;
-
-                header_height = block.header.height.into();
+            if r.is_err() {
+                sleep(Duration::from_secs(2)).await;
             } else {
-                break;
+                block = Some(r.unwrap().block);
             }
         }
 
-        last_height = block.header.height.into();
+        if block.is_none() {
+            break;
+        }
 
-        let response = recv_data_httpclient(&block, &mut client, cnt, save_header).await;
+        let response = recv_data_httpclient(&block.unwrap(), &mut client, save_header).await;
 
         header = Some(
             handle_header(
@@ -559,10 +472,12 @@ async fn main() -> web3::Result<()> {
                 celo_usd_price,
                 celo_gas_price,
                 celo_private_key_path,
+                client_id,
             )
             .await
             .unwrap(),
         );
+        cnt += 1;
     }
 
     Ok(())
