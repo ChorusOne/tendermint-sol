@@ -6,11 +6,11 @@ const lib = require('./lib.js')
 
 contract('TendermintLightClient', () => {
   it('verifies ingestion of valid continuous headers', async () => {
-      await ingest(28, 29)
+      await ingest(8619996, 8619997)
   })
 
   it('verifies ingestion of valid non-continuous headers', async () => {
-      await ingest(28, 30)
+      await ingest(8619996, 8619998)
   })
 })
 

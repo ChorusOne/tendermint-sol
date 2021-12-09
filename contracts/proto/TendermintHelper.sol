@@ -39,12 +39,12 @@ library TendermintHelper {
             });
     }
 
-    function toConsensusState(TmHeader.Data memory lightBlock) internal pure returns (ConsensusState.Data memory) {
+    function toConsensusState(TmHeader.Data memory tmHeader) internal pure returns (ConsensusState.Data memory) {
         return
             ConsensusState.Data({
-                timestamp: lightBlock.signed_header.header.time,
-                root: MerkleRoot.Data({hash: lightBlock.signed_header.header.app_hash}),
-                next_validators_hash: lightBlock.signed_header.header.next_validators_hash
+                timestamp: tmHeader.signed_header.header.time,
+                root: MerkleRoot.Data({hash: tmHeader.signed_header.header.app_hash}),
+                next_validators_hash: tmHeader.signed_header.header.next_validators_hash
             });
     }
 

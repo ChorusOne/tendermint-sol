@@ -1,0 +1,6 @@
+test/demo/target
+test/demo/src/consts.rs
+scripts/secret
+solidity-protobuf
+build
+node_modules
