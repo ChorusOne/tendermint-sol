@@ -14,57 +14,71 @@ use ethabi::Token;
 use ibc;
 use std::{error::Error, fs::File, io::Write};
 
-use futures::try_join;
-use proto::tendermint::light::{ClientState, ConsensusState, Fraction, TmHeader};
+use proto::tendermint::light::{
+    ClientState, ConsensusState, Fraction, SignedHeader, TmHeader, ValidatorSet,
+};
 use tendermint_rpc::{Client, HttpClient};
 
 use consts::{IBC_HANDLER_ADDRESS, IBC_HOST_ADDRESS, TENDERMINT_LIGHT_CLIENT_ADDRESS};
 
 async fn recv_data_httpclient(
-    block: &tendermint::block::Block,
+    height: i64,
     client: &mut HttpClient,
     save_header: bool,
 ) -> Result<TmHeader, Box<dyn Error>> {
-    let commit_future = client.commit(block.header.height);
-    let validator_set_future = client.validators(block.header.height, tendermint_rpc::Paging::All);
+    let vs = fetch_validator_set(client, height, save_header).await?;
+    let sh = fetch_signed_header(client, height, save_header).await?;
 
-    let (signed_header_response, validator_set_response) =
-        try_join!(commit_future, validator_set_future)?;
-
-    recv_data(
-        block,
-        signed_header_response,
-        validator_set_response,
-        save_header,
-    )
-    .await
+    Ok(types::to_light_block(&sh, &vs))
 }
 
-async fn recv_data(
-    block: &tendermint::block::Block,
-    signed_header_response: tendermint_rpc::endpoint::commit::Response,
-    validator_set_response: tendermint_rpc::endpoint::validators::Response,
+async fn fetch_validator_set(
+    client: &mut tendermint_rpc::HttpClient,
+    height: i64,
     save_header: bool,
-) -> Result<TmHeader, Box<dyn Error>> {
-    let sh = types::to_signed_header(&signed_header_response.signed_header);
-    let vs = types::to_validator_set(&validator_set_response.validators);
+) -> Result<ValidatorSet, Box<dyn Error>> {
+    let validator_set_future = client
+        .validators(
+            tendermint::block::Height::from(height as u32),
+            tendermint_rpc::Paging::All,
+        )
+        .await?;
+
+    let vs = types::to_validator_set(&validator_set_future.validators);
 
     if save_header {
-        let path = format!("../data/header.{}.signed_header.json", block.header.height);
-        let mut output = File::create(path)?;
-        let data = serde_json::to_vec_pretty(&sh)?;
-        output.write_all(&data)?;
-
-        let path = format!("../data/header.{}.validator_set.json", block.header.height);
+        let path = format!("../data/header.{}.validator_set.json", height);
         let mut output = File::create(path)?;
         let data = serde_json::to_vec_pretty(&vs)?;
         output.write_all(&data)?;
     }
 
-    Ok(types::to_light_block(&sh, &vs))
+    Ok(vs)
+}
+
+async fn fetch_signed_header(
+    client: &mut tendermint_rpc::HttpClient,
+    height: i64,
+    save_header: bool,
+) -> Result<SignedHeader, Box<dyn Error>> {
+    let commit_future = client
+        .commit(tendermint::block::Height::from(height as u32))
+        .await?;
+
+    let sh = types::to_signed_header(&commit_future.signed_header);
+
+    if save_header {
+        let path = format!("../data/header.{}.signed_header.json", height);
+        let mut output = File::create(path)?;
+        let data = serde_json::to_vec_pretty(&sh)?;
+        output.write_all(&data)?;
+    }
+
+    Ok(sh)
 }
 
 async fn handle_header<'a, T: web3::Transport>(
+    client: &'a mut tendermint_rpc::HttpClient,
     transport: &'a T,
     trusted_tm_header: Option<TmHeader>,
     tm_header: TmHeader,
@@ -262,12 +276,13 @@ async fn handle_header<'a, T: web3::Transport>(
         //.abci_query(Some(path), client_state_path.into_bytes(), Some(tendermint::block::Height::from(trusted_height as u32)), true)
         //.await.unwrap();
 
-        let trusted = trusted_tm_header.unwrap();
+        let trusted_validator_set = fetch_validator_set(client, trusted_height + 1, false).await?;
+
         let tm_header = TmHeader {
             signed_header: Some(signed_header.to_owned()),
             validator_set: tm_header.validator_set.to_owned(),
             trusted_height: trusted_height,
-            trusted_validators: trusted.validator_set.to_owned(),
+            trusted_validators: Some(trusted_validator_set),
         };
 
         let serialized_header =
@@ -459,10 +474,16 @@ async fn main() -> web3::Result<()> {
             break;
         }
 
-        let response = recv_data_httpclient(&block.unwrap(), &mut client, save_header).await;
+        let response = recv_data_httpclient(
+            block.unwrap().header.height.into(),
+            &mut client,
+            save_header,
+        )
+        .await;
 
         header = Some(
             handle_header(
+                &mut client,
                 &transport,
                 header,
                 response.unwrap(),

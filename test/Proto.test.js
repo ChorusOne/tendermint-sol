@@ -4,11 +4,11 @@ const lib = require('./lib.js')
 
 contract('ProtoMock', () => {
   it('verifies TmHeader deserialization (with trusted_validator_set)', async () => {
-    await deserialize(28, 29, true)
+    await deserialize(8619996, 8619997, true)
   })
 
   it('verifies TmHeader deserialization (without trusted_validator_set)', async () => {
-    await deserialize(28, 29, false)
+    await deserialize(8619996, 8619997, false)
   })
 })
 

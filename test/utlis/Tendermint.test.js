@@ -12,7 +12,7 @@ contract('TendermintMock', () => {
 
       const SignedHeader = root.lookupType('tendermint.light.SignedHeader')
 
-      const [sh, vs] = await lib.readHeader(28);
+      const [sh, vs] = await lib.readHeader(8619996);
       const encoded = SignedHeader.encode(sh).finish()
 
       const expectedHash = '0x' + Buffer.from(sh.commit.block_id.hash).toString('hex')
@@ -31,11 +31,11 @@ contract('TendermintMock', () => {
 
       const ValidatorSet = root.lookupType('tendermint.light.ValidatorSet')
 
-      const [sh, vs] = await lib.readHeader(28);
+      const [sh, vs] = await lib.readHeader(8619996);
       const encoded = await ValidatorSet.encode(vs).finish()
       const votingPower = await mock.totalVotingPower.call(encoded)
 
-      assert.equal(votingPower.toNumber(), 100000, 'invalid voting power')
+      assert.equal(votingPower.toNumber(), 169879495, 'invalid voting power')
     })
   })
 
@@ -48,7 +48,7 @@ contract('TendermintMock', () => {
 
       const ValidatorSet = root.lookupType('tendermint.light.ValidatorSet')
 
-      const [sh, vs] = await lib.readHeader(28);
+      const [sh, vs] = await lib.readHeader(8619996);
       const encoded = await ValidatorSet.encode(vs).finish()
       var { 0: index, 1: found } = await mock.getByAddress.call(encoded, vs.validators[0].address)
 
@@ -71,7 +71,7 @@ contract('TendermintMock', () => {
 
       const ValidatorSet = root.lookupType('tendermint.light.ValidatorSet')
 
-      const [sh, vs] = await lib.readHeader(28);
+      const [sh, vs] = await lib.readHeader(8619996);
       const encoded = await ValidatorSet.encode(vs).finish()
       const hash = await mock.validatorSetHash.call(encoded)
       const expected = lib.toHexString(sh.header.validators_hash)

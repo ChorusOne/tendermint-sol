@@ -11,8 +11,8 @@ contract('MerkleTreeMock', () => {
       if (err) { throw err }
 
       const ValidatorSet = root.lookupType('tendermint.light.ValidatorSet')
-      const validatorSetObj = require('../../data/header.28.validator_set.json')
-      const headerObj = require('../../data/header.28.signed_header.json')
+      const validatorSetObj = require('../../data/header.8619997.validator_set.json')
+      const headerObj = require('../../data/header.8619997.signed_header.json')
       const vs = ValidatorSet.fromObject(validatorSetObj)
 
       const cases = [

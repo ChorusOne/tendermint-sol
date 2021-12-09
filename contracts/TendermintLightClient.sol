@@ -139,7 +139,7 @@ contract TendermintLightClient is IClient {
         TmHeader.Data memory tmHeader,
         Duration.Data memory currentTime
     ) private view {
-        // checkTrustedHead
+        // checkTrustedHeader
         // assert that trustedVals is NextValidators of last trusted header
         // to do this, we check that trustedVals.Hash() == consState.NextValidatorsHash
         require(
