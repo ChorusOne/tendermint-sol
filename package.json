@@ -2,6 +2,7 @@
   "dependencies": {
     "@celo/contractkit": "^1.4.0",
     "@openzeppelin/contracts": "^4.3.2",
+    "solidity-bytes-utils": "^0.8.0",
     "web3": "^1.6.1"
   },
   "devDependencies": {
