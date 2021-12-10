@@ -4,3 +4,5 @@ scripts/secret
 solidity-protobuf
 build
 node_modules
+ics23/
+yui-ibc-solidity/

@@ -9,6 +9,10 @@ library Bytes {
         }
     }
 
+    function toBytes(bytes32 data) public pure returns (bytes memory) {
+        return abi.encodePacked(data);
+    }
+
     function toUint64(bytes memory _bytes, uint256 _start) internal pure returns (uint64 ret) {
         require(_bytes.length >= _start + 8, "Bytes: toUint64 out of bounds");
         assembly {

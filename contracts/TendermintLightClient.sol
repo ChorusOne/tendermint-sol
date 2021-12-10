@@ -8,6 +8,14 @@ import {
     ConsensusState,
     TmHeader
 } from "./proto/TendermintLight.sol";
+import {
+    PROOFS_PROTO_GLOBAL_ENUMS,
+    CommitmentProof,
+    ProofSpec,
+    InnerSpec,
+    LeafOp,
+    InnerOp
+} from "./proto/proofs.sol";
 import "./proto/TendermintHelper.sol";
 import {GoogleProtobufAny as Any} from "./proto/GoogleProtobufAny.sol";
 import "./ibc/IClient.sol";
@@ -16,10 +24,12 @@ import "./ibc/IBCMsgs.sol";
 import "./ibc/IBCIdentifier.sol";
 import "./utils/Bytes.sol";
 import "./utils/Tendermint.sol";
+import "./ics23/ics23.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 contract TendermintLightClient is IClient {
     using Bytes for bytes;
+    using Bytes for bytes32;
     using TendermintHelper for TmHeader.Data;
     using TendermintHelper for ConsensusState.Data;
     using TendermintHelper for ValidatorSet.Data;
@@ -466,6 +476,34 @@ contract TendermintLightClient is IClient {
         bytes32 slot,
         bytes32 expectedValue
     ) internal pure returns (bool) {
-		return true;
+        int32[] memory childOrder = new int32[](2);
+        childOrder[0] = 0;
+        childOrder[1] = 1;
+
+        ProofSpec.Data memory tmProofSpec = ProofSpec.Data({
+            leaf_spec: LeafOp.Data({
+                hash: PROOFS_PROTO_GLOBAL_ENUMS.HashOp.SHA256,
+                prehash_key: PROOFS_PROTO_GLOBAL_ENUMS.HashOp.NO_HASH,
+                prehash_value: PROOFS_PROTO_GLOBAL_ENUMS.HashOp.SHA256,
+                length: PROOFS_PROTO_GLOBAL_ENUMS.LengthOp.VAR_PROTO,
+                prefix: hex"00"
+            }),
+            inner_spec: InnerSpec.Data({
+                child_order: childOrder,
+                child_size: 32,
+                min_prefix_length: 1,
+                max_prefix_length: 1,
+                empty_child: abi.encodePacked(),
+                hash: PROOFS_PROTO_GLOBAL_ENUMS.HashOp.SHA256
+            }),
+            min_depth: 0,
+            max_depth: 0
+        });
+
+        CommitmentProof.Data memory commitmentProof = CommitmentProof.decode(proof);
+
+        Ics23.VerifyMembershipError vCode = Ics23.verifyMembership(tmProofSpec, root.toBytes(), commitmentProof, slot.toBytes(), expectedValue.toBytes());
+
+        return vCode == Ics23.VerifyMembershipError.None;
     }
 }
