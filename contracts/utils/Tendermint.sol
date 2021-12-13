@@ -174,7 +174,7 @@ library Tendermint {
 
         // TODO: unsafe multiplication?
         CommitSig.Data memory commitSig;
-        int256 totalVotingPowerMulByNumerator = trustedVals.total_voting_power * int64(trustLevel.numerator);
+        int256 totalVotingPowerMulByNumerator = trustedVals.getTotalVotingPower() * int64(trustLevel.numerator);
         int256 votingPowerNeeded = totalVotingPowerMulByNumerator / int64(trustLevel.denominator);
 
         for (uint256 idx = 0; idx < commit.signatures.length; idx++) {
