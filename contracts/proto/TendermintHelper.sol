@@ -161,9 +161,6 @@ library TendermintHelper {
     // TODO: can we avoid safe casting here?
     function getTotalVotingPower(ValidatorSet.Data memory vals) internal pure returns (int64) {
         if (vals.total_voting_power == 0) {
-            // Update total voting power
-            // TODO: This might be expensive, shouldn't we expect the total voting power already be calculated?
-
             // it seems you can't overflow addition in solidity:
             // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/math/SafeMath.sol#L92
             uint256 sum = 0;
