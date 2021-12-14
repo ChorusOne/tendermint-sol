@@ -953,7 +953,7 @@ library ClientState {
     returns (Data memory, uint)
   {
     Data memory r;
-    uint[12] memory counters;
+    uint[10] memory counters;
     uint256 fieldId;
     ProtoBufRuntime.WireType wireType;
     uint256 bytesRead;
@@ -983,10 +983,10 @@ library ClientState {
       else if (fieldId == 7) {
         pointer += _read_latest_height(pointer, bs, r, counters);
       }
-      else if (fieldId == 10) {
+      else if (fieldId == 8) {
         pointer += _read_allow_update_after_expiry(pointer, bs, r, counters);
       }
-      else if (fieldId == 11) {
+      else if (fieldId == 9) {
         pointer += _read_allow_update_after_misbehaviour(pointer, bs, r, counters);
       }
       
@@ -1031,7 +1031,7 @@ library ClientState {
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[12] memory counters
+    uint[10] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
@@ -1058,7 +1058,7 @@ library ClientState {
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[12] memory counters
+    uint[10] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
@@ -1085,7 +1085,7 @@ library ClientState {
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[12] memory counters
+    uint[10] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
@@ -1112,7 +1112,7 @@ library ClientState {
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[12] memory counters
+    uint[10] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
@@ -1139,7 +1139,7 @@ library ClientState {
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[12] memory counters
+    uint[10] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
@@ -1166,7 +1166,7 @@ library ClientState {
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[12] memory counters
+    uint[10] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
@@ -1193,7 +1193,7 @@ library ClientState {
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[12] memory counters
+    uint[10] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
@@ -1220,17 +1220,17 @@ library ClientState {
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[12] memory counters
+    uint[10] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
      */
     (bool x, uint256 sz) = ProtoBufRuntime._decode_bool(p, bs);
     if (isNil(r)) {
-      counters[10] += 1;
+      counters[8] += 1;
     } else {
       r.allow_update_after_expiry = x;
-      if (counters[10] > 0) counters[10] -= 1;
+      if (counters[8] > 0) counters[8] -= 1;
     }
     return sz;
   }
@@ -1247,17 +1247,17 @@ library ClientState {
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[12] memory counters
+    uint[10] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
      */
     (bool x, uint256 sz) = ProtoBufRuntime._decode_bool(p, bs);
     if (isNil(r)) {
-      counters[11] += 1;
+      counters[9] += 1;
     } else {
       r.allow_update_after_misbehaviour = x;
-      if (counters[11] > 0) counters[11] -= 1;
+      if (counters[9] > 0) counters[9] -= 1;
     }
     return sz;
   }
@@ -1399,7 +1399,7 @@ library ClientState {
     }
     if (r.allow_update_after_expiry != false) {
     pointer += ProtoBufRuntime._encode_key(
-      10,
+      8,
       ProtoBufRuntime.WireType.Varint,
       pointer,
       bs
@@ -1408,7 +1408,7 @@ library ClientState {
     }
     if (r.allow_update_after_misbehaviour != false) {
     pointer += ProtoBufRuntime._encode_key(
-      11,
+      9,
       ProtoBufRuntime.WireType.Varint,
       pointer,
       bs

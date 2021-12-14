@@ -2,8 +2,8 @@ syntax = "proto3";
 package tendermint.light;
 
 message Fraction {
-    uint64 numerator = 1;
-    uint64 denominator = 2;
+  uint64 numerator = 1;
+  uint64 denominator = 2;
 }
 
 // https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp
@@ -14,11 +14,11 @@ message Duration {
 
 message Consensus {
   uint64 block = 1;
-  uint64 app   = 2;
+  uint64 app = 2;
 }
 
 message ClientState {
-  string   chain_id    = 1;
+  string chain_id = 1;
   Fraction trust_level = 2;
 
   // duration of the period since the LastestTimestamp during which the
@@ -32,85 +32,48 @@ message ClientState {
   //ibc.core.client.v1.Height frozen_height = 6;
   int64 frozen_height = 6;
   // Latest height the client was updated to
-  //Height latest_height = 7;
   int64 latest_height = 7;
-
-  // Proof specifications used in verifying counterparty state
-  //repeated ics23.ProofSpec proof_specs = 8;
-
-  // Path at which next upgraded client will be committed.
-  // Each element corresponds to the key for a single CommitmentProof in the
-  // chained proof. NOTE: ClientState must stored under
-  // `{upgradePath}/{upgradeHeight}/clientState` ConsensusState must be stored
-  // under `{upgradepath}/{upgradeHeight}/consensusState` For SDK chains using
-  // the default upgrade module, upgrade_path should be []string{"upgrade",
-  // "upgradedIBCState"}`
-  //repeated string upgrade_path = 9;
-
   // This flag, when set to true, will allow governance to recover a client
   // which has expired
-  bool allow_update_after_expiry = 10;
+  bool allow_update_after_expiry = 8;
   // This flag, when set to true, will allow governance to unfreeze a client
   // whose chain has experienced a misbehaviour event
-  bool allow_update_after_misbehaviour = 11;
+  bool allow_update_after_misbehaviour = 9;
 }
 
 // ConsensusState defines the consensus state from Tendermint.
 message ConsensusState {
   // timestamp that corresponds to the block height in which the ConsensusState
   // was stored.
-  Timestamp timestamp         = 1;
+  Timestamp timestamp = 1;
 
   // commitment root (i.e app hash)
-  MerkleRoot root            = 2;
+  MerkleRoot root = 2;
   bytes next_validators_hash = 3;
 }
 
 // MerkleRoot defines a merkle root hash.
 // In the Cosmos SDK, the AppHash of a block header becomes the root.
 message MerkleRoot {
-  //option (gogoproto.goproto_getters) = false;
-
   bytes hash = 1;
 }
 
-
-//import "channel/Channel.proto";
-
 enum BlockIDFlag {
   BLOCK_ID_FLAG_UNKNOWN = 0;
-  BLOCK_ID_FLAG_ABSENT  = 1;
-  BLOCK_ID_FLAG_COMMIT  = 2;
-  BLOCK_ID_FLAG_NIL     = 3;
+  BLOCK_ID_FLAG_ABSENT = 1;
+  BLOCK_ID_FLAG_COMMIT = 2;
+  BLOCK_ID_FLAG_NIL = 3;
 }
 
 enum SignedMsgType {
   SIGNED_MSG_TYPE_UNKNOWN = 0;
   // Votes
-  SIGNED_MSG_TYPE_PREVOTE   = 1;
+  SIGNED_MSG_TYPE_PREVOTE = 1;
   SIGNED_MSG_TYPE_PRECOMMIT = 2;
 
   // Proposals
   SIGNED_MSG_TYPE_PROPOSAL = 32;
 }
-
-
-// SOURCE: channel/Channel.proto
-// Height is a monotonically increasing data type
-// that can be compared against another Height for the purposes of updating and
-// freezing clients
-//
-// Normally the RevisionHeight is incremented at each height while keeping RevisionNumber
-// the same. However some consensus algorithms may choose to reset the
-// height in certain conditions e.g. hard forks, state-machine breaking changes
-// In these cases, the RevisionNumber is incremented so that height continues to
-// be monitonically increasing even as the RevisionHeight gets reset
-//message Height {
-  //// the revision that the client is currently on
-  //uint64 revision_number = 1;
-  //// the height within the given revision
-  //uint64 revision_height = 2;
-//}
 
 message CanonicalPartSetHeader {
   uint32 total = 1;
@@ -118,80 +81,79 @@ message CanonicalPartSetHeader {
 }
 
 message CanonicalBlockID {
-  bytes                  hash            = 1;
+  bytes hash = 1;
   CanonicalPartSetHeader part_set_header = 2;
 }
 
 message CanonicalVote {
-  SignedMsgType             type      = 1;
-  sfixed64                  height    = 2;
-  sfixed64                  round     = 3;
-  CanonicalBlockID          block_id  = 4;
+  SignedMsgType type = 1;
+  sfixed64 height = 2;
+  sfixed64 round = 3;
+  CanonicalBlockID block_id = 4;
   Timestamp timestamp = 5;
-  string                    chain_id  = 6;
+  string chain_id = 6;
 }
 
 message Vote {
-  SignedMsgType type     = 1;
-  int64         height   = 2;
-  int32         round    = 3;
-  BlockID       block_id = 4; //[(gogoproto.nullable) = false, (gogoproto.customname) = "BlockID"];  // zero if vote is nil.
-  Timestamp timestamp = 5; // [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  SignedMsgType type = 1;
+  int64 height = 2;
+  int32 round = 3;
+  BlockID block_id = 4;
+  Timestamp timestamp = 5;
   bytes validator_address = 6;
-  int32 validator_index   = 7;
-  bytes signature         = 8;
+  int32 validator_index = 7;
+  bytes signature = 8;
 }
 
 message ValidatorSet {
-  repeated Validator validators         = 1;
-  Validator          proposer           = 2;
-  int64              total_voting_power = 3;
+  repeated Validator validators = 1;
+  Validator proposer = 2;
+  int64 total_voting_power = 3;
 }
 
 message Validator {
-  bytes                       address           = 1;
-  PublicKey                   pub_key           = 2;
-  int64                       voting_power      = 3;
-  int64                       proposer_priority = 4;
+  bytes address = 1;
+  PublicKey pub_key = 2;
+  int64 voting_power = 3;
+  int64 proposer_priority = 4;
 }
 
 message SimpleValidator {
-  PublicKey pub_key      = 1;
-  int64     voting_power = 2;
+  PublicKey pub_key = 1;
+  int64 voting_power = 2;
 }
 
 message PublicKey {
   oneof sum {
-    bytes ed25519   = 1;
+    bytes ed25519 = 1;
     bytes secp256k1 = 2;
-    bytes sr25519   = 3;
+    bytes sr25519 = 3;
   }
 }
 
 message PartSetHeader {
   uint32 total = 1;
-  bytes  hash  = 2;
+  bytes hash= 2;
 }
 
-// BlockID
 message BlockID {
-  bytes         hash            = 1;
+  bytes hash = 1;
   PartSetHeader part_set_header = 2;
 }
 
 message Commit {
-  int64              height     = 1;
-  int32              round      = 2;
-  BlockID            block_id   = 3;
+  int64 height = 1;
+  int32 round = 2;
+  BlockID block_id = 3;
   repeated CommitSig signatures = 4;
 }
 
 // CommitSig is a part of the Vote included in a Commit.
 message CommitSig {
-  BlockIDFlag               block_id_flag     = 1;
-  bytes                     validator_address = 2;
-  Timestamp                 timestamp         = 3;
-  bytes                     signature         = 4;
+  BlockIDFlag block_id_flag = 1;
+  bytes validator_address = 2;
+  Timestamp timestamp = 3;
+  bytes signature = 4;
 }
 
 message Timestamp {
@@ -209,18 +171,18 @@ message Timestamp {
 
 message LightHeader {
   Consensus version  = 1;
-  string                       chain_id = 2;
-  int64                        height   = 3;
+  string chain_id = 2;
+  int64 height = 3;
   Timestamp time = 4;
-  BlockID                      last_block_id = 5;
+  BlockID last_block_id = 5;
   bytes last_commit_hash = 6;  // commit from validators from the last block
-  bytes data_hash        = 7;  // transactions
-  bytes validators_hash      = 8;   // validators for the current block
+  bytes data_hash = 7;  // transactions
+  bytes validators_hash = 8;   // validators for the current block
   bytes next_validators_hash = 9;   // validators for the next block
-  bytes consensus_hash       = 10;  // consensus params for current block
-  bytes app_hash             = 11;  // state after txs from the previous block
-  bytes last_results_hash    = 12;  // root hash of all results from the txs from the previous block
-  bytes evidence_hash    = 13;  // evidence included in the block
+  bytes consensus_hash = 10;  // consensus params for current block
+  bytes app_hash = 11;  // state after txs from the previous block
+  bytes last_results_hash = 12;  // root hash of all results from the txs from the previous block
+  bytes evidence_hash = 13;  // evidence included in the block
   bytes proposer_address = 14;  // original proposer of the block
 }
 
@@ -230,9 +192,9 @@ message SignedHeader {
 }
 
 message TmHeader {
-  SignedHeader        signed_header = 1;
-  ValidatorSet        validator_set = 2;
+  SignedHeader signed_header = 1;
+  ValidatorSet validator_set = 2;
 
-  int64               trusted_height = 3;
-  ValidatorSet        trusted_validators = 4;
+  int64 trusted_height = 3;
+  ValidatorSet trusted_validators = 4;
 }

@@ -65,7 +65,7 @@ contract('Secp256k1Mock', () => {
     for (const c of cases) {
       const pk = '0x0317088765d17a1232f9757ef7cf992046f383468de5e0e434379de1b8299039fe'
       const verify = await mock.verify.call(c.msg, pk, c.sig)
-      const recovered = await mock.recover.call(c.msg, c.sig, c.v == 27 ? 28 : 27)
+      const recovered = await mock.recover.call(c.msg, c.sig, c.v === 27 ? 28 : 27)
 
       assert.notEqual(recovered, '0x083C31D442e15874407c8d9d17D17f26bf53ef34', 'recovered address worked?')
       assert.equal(verify, false, 'secp256k1 verification should fail for wrong pk')
