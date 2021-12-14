@@ -41,6 +41,25 @@ contract TendermintLightClient is IClient {
     }
 
     ProtoTypes private _pts;
+    ProofSpec.Data private _tmProofSpec = ProofSpec.Data({
+        leaf_spec: LeafOp.Data({
+            hash: PROOFS_PROTO_GLOBAL_ENUMS.HashOp.SHA256,
+            prehash_key: PROOFS_PROTO_GLOBAL_ENUMS.HashOp.NO_HASH,
+            prehash_value: PROOFS_PROTO_GLOBAL_ENUMS.HashOp.SHA256,
+            length: PROOFS_PROTO_GLOBAL_ENUMS.LengthOp.VAR_PROTO,
+            prefix: hex"00"
+        }),
+        inner_spec: InnerSpec.Data({
+            child_order: getTmChildOrder(),
+            child_size: 32,
+            min_prefix_length: 1,
+            max_prefix_length: 1,
+            empty_child: abi.encodePacked(),
+            hash: PROOFS_PROTO_GLOBAL_ENUMS.HashOp.SHA256
+        }),
+        min_depth: 0,
+        max_depth: 0
+    });
 
     constructor() public {
         _pts = ProtoTypes({
@@ -469,40 +488,24 @@ contract TendermintLightClient is IClient {
         return (TmHeader.decode(anyHeader.value), true);
     }
 
+    function getTmChildOrder() internal pure returns (int32[] memory) {
+        int32[] memory childOrder = new int32[](2);
+        childOrder[0] = 0;
+        childOrder[1] = 1;
+
+        return childOrder;
+    }
+
     function verifyMembership(
         bytes memory proof,
         bytes32 root,
         bytes memory prefix,
         bytes32 slot,
         bytes32 expectedValue
-    ) internal pure returns (bool) {
-        int32[] memory childOrder = new int32[](2);
-        childOrder[0] = 0;
-        childOrder[1] = 1;
-
-        ProofSpec.Data memory tmProofSpec = ProofSpec.Data({
-            leaf_spec: LeafOp.Data({
-                hash: PROOFS_PROTO_GLOBAL_ENUMS.HashOp.SHA256,
-                prehash_key: PROOFS_PROTO_GLOBAL_ENUMS.HashOp.NO_HASH,
-                prehash_value: PROOFS_PROTO_GLOBAL_ENUMS.HashOp.SHA256,
-                length: PROOFS_PROTO_GLOBAL_ENUMS.LengthOp.VAR_PROTO,
-                prefix: hex"00"
-            }),
-            inner_spec: InnerSpec.Data({
-                child_order: childOrder,
-                child_size: 32,
-                min_prefix_length: 1,
-                max_prefix_length: 1,
-                empty_child: abi.encodePacked(),
-                hash: PROOFS_PROTO_GLOBAL_ENUMS.HashOp.SHA256
-            }),
-            min_depth: 0,
-            max_depth: 0
-        });
-
+    ) internal view returns (bool) {
         CommitmentProof.Data memory commitmentProof = CommitmentProof.decode(proof);
 
-        Ics23.VerifyMembershipError vCode = Ics23.verifyMembership(tmProofSpec, root.toBytes(), commitmentProof, slot.toBytes(), expectedValue.toBytes());
+        Ics23.VerifyMembershipError vCode = Ics23.verifyMembership(_tmProofSpec, root.toBytes(), commitmentProof, slot.toBytes(), expectedValue.toBytes());
 
         return vCode == Ics23.VerifyMembershipError.None;
     }
