@@ -276,7 +276,12 @@ async fn handle_header<'a, T: web3::Transport>(
         //.abci_query(Some(path), client_state_path.into_bytes(), Some(tendermint::block::Height::from(trusted_height as u32)), true)
         //.await.unwrap();
 
-        let trusted_validator_set = fetch_validator_set(client, trusted_height + 1, false).await?;
+        // sending trusted validators is required only for non-adjecent test,
+        // because tm_header.validator_set.hash() == consensusState.next_validators_hash (adjecent case)
+        let trusted_validator_set = match non_adjecent_test {
+            true => fetch_validator_set(client, trusted_height + 1, false).await?,
+            false => ValidatorSet::default(),
+        };
 
         let tm_header = TmHeader {
             signed_header: Some(signed_header.to_owned()),

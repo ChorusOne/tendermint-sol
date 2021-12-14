@@ -67,7 +67,6 @@ library Tendermint {
         );
 
         // Ensure that +2/3 of new validators signed correctly.
-        //if err := untrustedVals.VerifyCommitLight(trustedHeader.ChainID, untrustedHeader.Commit.BlockID,
         bool ok = verifyCommitLight(
             untrustedVals,
             trustedHeader.header.chain_id,
@@ -91,7 +90,14 @@ library Tendermint {
     ) internal view returns (bool) {
         require(
             untrustedHeader.header.height != trustedHeader.header.height + 1,
-            "headers must be non adjacent in height"
+            "LC: headers must be non adjacent in height"
+        );
+
+        // assert that trustedVals is NextValidators of last trusted header
+        // to do this, we check that trustedVals.Hash() == consState.NextValidatorsHash
+        require(
+            trustedVals.hash() == trustedHeader.header.next_validators_hash.toBytes32(),
+            "LC: headers trusted validators does not hash to latest trusted validators"
         );
 
         require(!trustedHeader.isExpired(trustingPeriod, currentTime), "header can't be expired");
@@ -102,7 +108,6 @@ library Tendermint {
         verifyCommitLightTrusting(trustedVals, trustedHeader.header.chain_id, untrustedHeader.commit, trustLevel);
 
         // Ensure that +2/3 of new validators signed correctly.
-        //if err := untrustedVals.VerifyCommitLight(trustedHeader.ChainID, untrustedHeader.Commit.BlockID,
         bool ok = verifyCommitLight(
             untrustedVals,
             trustedHeader.header.chain_id,
