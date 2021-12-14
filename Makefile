@@ -33,4 +33,4 @@ demo:
 
 deploy:
 	# gas-price: 0.5 gwei = 500000000 wei
-	NETWORK=celo ./scripts/deploy_with_stats.sh 500000000 5.20
+	./scripts/deploy_with_stats.sh 500000000 5.20
