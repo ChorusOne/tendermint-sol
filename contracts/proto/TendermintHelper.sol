@@ -149,8 +149,9 @@ library TendermintHelper {
         pure
         returns (uint256 index, bool found)
     {
+        bytes32 addrHash = keccak256(abi.encodePacked(addr));
         for (uint256 idx; idx < vals.validators.length; idx++) {
-            if (keccak256(abi.encodePacked(vals.validators[idx].Address)) == keccak256(abi.encodePacked(addr))) {
+            if (keccak256(abi.encodePacked(vals.validators[idx].Address)) == addrHash) {
                 return (idx, true);
             }
         }
