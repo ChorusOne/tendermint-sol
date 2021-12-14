@@ -168,21 +168,11 @@ contract TendermintLightClient is IClient {
         TmHeader.Data memory tmHeader,
         Duration.Data memory currentTime
     ) private view {
-        // checkTrustedHeader
-        // assert that trustedVals is NextValidators of last trusted header
-        // to do this, we check that trustedVals.Hash() == consState.NextValidatorsHash
-        require(
-            tmHeader.trusted_validators.hash() == trustedConsensusState.next_validators_hash.toBytes32(),
-            "LC: headers trusted validators does not hash to latest trusted validators"
-        );
-
 	    // assert header height is newer than consensus state
         require(
             tmHeader.signed_header.header.height > tmHeader.trusted_height,
             "LC: header height consensus state height"
         );
-
-        // TODO: IsRevisionFormat(chaiID)
 
         LightHeader.Data memory lc;
         lc.chain_id = clientState.chain_id;
