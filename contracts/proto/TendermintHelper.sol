@@ -56,7 +56,7 @@ library TendermintHelper {
                 Type: TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.SignedMsgType.SIGNED_MSG_TYPE_PRECOMMIT,
                 height: commit.height,
                 round: commit.round,
-                block_id: commit.block_id, // TODO: this is not exact copy
+                block_id: commit.block_id,
                 timestamp: commitSig.timestamp,
                 validator_address: commitSig.validator_address,
                 validator_index: SafeCast.toInt32(int256(valIdx)),
@@ -98,7 +98,7 @@ library TendermintHelper {
             nanos: header.header.time.nanos
         });
 
-        return gt(Timestamp.Data({Seconds: int64(currentTime.Seconds), nanos: 0}), expirationTime); // TODO: GTE?
+        return gt(Timestamp.Data({Seconds: int64(currentTime.Seconds), nanos: 0}), expirationTime);
     }
 
     function gt(Timestamp.Data memory t1, Timestamp.Data memory t2) internal pure returns (bool) {
@@ -159,11 +159,8 @@ library TendermintHelper {
         return (0, false);
     }
 
-    // TODO: can we avoid safe casting here?
     function getTotalVotingPower(ValidatorSet.Data memory vals) internal pure returns (int64) {
         if (vals.total_voting_power == 0) {
-            // it seems you can't overflow addition in solidity:
-            // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/math/SafeMath.sol#L92
             uint256 sum = 0;
             uint256 maxInt64 = 1 << (63 - 1);
             uint256 maxTotalVotingPower = maxInt64 / 8;

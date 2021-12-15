@@ -177,7 +177,6 @@ library Tendermint {
         int64 talliedVotingPower = 0;
         bool[] memory seenVals = new bool[](trustedVals.validators.length);
 
-        // TODO: unsafe multiplication?
         CommitSig.Data memory commitSig;
         int256 totalVotingPowerMulByNumerator = trustedVals.getTotalVotingPower() * int64(trustLevel.numerator);
         int256 votingPowerNeeded = totalVotingPowerMulByNumerator / int64(trustLevel.denominator);
@@ -192,7 +191,6 @@ library Tendermint {
 
             // We don't know the validators that committed this block, so we have to
             // check for each vote if its validator is already known.
-            // TODO: O(n^2)
             (uint256 valIdx, bool found) = trustedVals.getByAddress(commitSig.validator_address);
             if (found) {
                 // check for double vote of validator on the same commit

@@ -81,7 +81,8 @@ contract TendermintLightClient is IClient {
         if (!found) {
             return (0, false);
         }
-        return (uint64(consensusState.timestamp.Seconds), true); // TODO (added seconds)
+        // TODO: Timestamp is a sum of nanoseconds and seconds, this method requires return type update or not? (solidity doesn't support nanoseconds)
+        return (uint64(consensusState.timestamp.Seconds), true);
     }
 
 	/**
@@ -138,8 +139,7 @@ contract TendermintLightClient is IClient {
         (clientState, ok) = unmarshalClientState(clientStateBytes);
         require(ok, "LC: client state is invalid");
 
-        // TODO: timestamp * 1000 * 1000 * 1000??
-        checkValidity(clientState, trustedConsensusState, tmHeader, Duration.Data({Seconds: SafeCast.toInt64(int256(block.timestamp)), nanos: 0})); // TODO: unsafe downcast to int64
+        checkValidity(clientState, trustedConsensusState, tmHeader, Duration.Data({Seconds: SafeCast.toInt64(int256(block.timestamp)), nanos: 0}));
 
 	    // Header is different from existing consensus state and also valid, so freeze the client and return
 	    if (conflictingHeader) {
