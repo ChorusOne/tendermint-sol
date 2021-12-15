@@ -4,10 +4,13 @@ pragma solidity ^0.8.2;
 
 import {TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS, Validator, CanonicalBlockID, CanonicalVote, TmHeader, ConsensusState, Commit, CommitSig, SignedHeader, ValidatorSet, Duration, Timestamp, Consensus} from "./TendermintLight.sol";
 import "./Encoder.sol";
+import "../utils/Bytes.sol";
 import "../utils/crypto/MerkleTree.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 library TendermintHelper {
+    using Bytes for bytes;
+
     function toSimpleValidatorEncoded(Validator.Data memory val) internal pure returns (bytes memory) {
         return Encoder.encodeNew(val);
     }
@@ -120,9 +123,9 @@ library TendermintHelper {
         pure
         returns (uint256 index, bool found)
     {
-        bytes32 addrHash = keccak256(abi.encodePacked(addr));
+        bytes20 rawAddr = addr.toBytes20();
         for (uint256 idx; idx < vals.validators.length; idx++) {
-            if (keccak256(abi.encodePacked(vals.validators[idx].Address)) == addrHash) {
+            if (vals.validators[idx].pub_key.toTmAddress() == rawAddr) {
                 return (idx, true);
             }
         }

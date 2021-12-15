@@ -3420,7 +3420,6 @@ library Validator {
 
   //struct definition
   struct Data {
-    bytes Address;
     bytes pub_key;
     int64 voting_power;
   }
@@ -3462,7 +3461,7 @@ library Validator {
     returns (Data memory, uint)
   {
     Data memory r;
-    uint[4] memory counters;
+    uint[3] memory counters;
     uint256 fieldId;
     ProtoBufRuntime.WireType wireType;
     uint256 bytesRead;
@@ -3472,12 +3471,9 @@ library Validator {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_Address(pointer, bs, r, counters);
-      }
-      else if (fieldId == 2) {
         pointer += _read_pub_key(pointer, bs, r, counters);
       }
-      else if (fieldId == 3) {
+      else if (fieldId == 2) {
         pointer += _read_voting_power(pointer, bs, r, counters);
       }
       
@@ -3518,11 +3514,11 @@ library Validator {
    * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
-  function _read_Address(
+  function _read_pub_key(
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[4] memory counters
+    uint[3] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
@@ -3531,35 +3527,8 @@ library Validator {
     if (isNil(r)) {
       counters[1] += 1;
     } else {
-      r.Address = x;
-      if (counters[1] > 0) counters[1] -= 1;
-    }
-    return sz;
-  }
-
-  /**
-   * @dev The decoder for reading a field
-   * @param p The offset of bytes array to start decode
-   * @param bs The bytes array to be decoded
-   * @param r The in-memory struct
-   * @param counters The counters for repeated fields
-   * @return The number of bytes decoded
-   */
-  function _read_pub_key(
-    uint256 p,
-    bytes memory bs,
-    Data memory r,
-    uint[4] memory counters
-  ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
-    (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
-    if (isNil(r)) {
-      counters[2] += 1;
-    } else {
       r.pub_key = x;
-      if (counters[2] > 0) counters[2] -= 1;
+      if (counters[1] > 0) counters[1] -= 1;
     }
     return sz;
   }
@@ -3576,17 +3545,17 @@ library Validator {
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[4] memory counters
+    uint[3] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
      */
     (int64 x, uint256 sz) = ProtoBufRuntime._decode_int64(p, bs);
     if (isNil(r)) {
-      counters[3] += 1;
+      counters[2] += 1;
     } else {
       r.voting_power = x;
-      if (counters[3] > 0) counters[3] -= 1;
+      if (counters[2] > 0) counters[2] -= 1;
     }
     return sz;
   }
@@ -3624,18 +3593,9 @@ library Validator {
     uint256 offset = p;
     uint256 pointer = p;
     
-    if (r.Address.length != 0) {
-    pointer += ProtoBufRuntime._encode_key(
-      1,
-      ProtoBufRuntime.WireType.LengthDelim,
-      pointer,
-      bs
-    );
-    pointer += ProtoBufRuntime._encode_bytes(r.Address, pointer, bs);
-    }
     if (r.pub_key.length != 0) {
     pointer += ProtoBufRuntime._encode_key(
-      2,
+      1,
       ProtoBufRuntime.WireType.LengthDelim,
       pointer,
       bs
@@ -3644,7 +3604,7 @@ library Validator {
     }
     if (r.voting_power != 0) {
     pointer += ProtoBufRuntime._encode_key(
-      3,
+      2,
       ProtoBufRuntime.WireType.Varint,
       pointer,
       bs
@@ -3694,7 +3654,6 @@ library Validator {
     Data memory r
   ) internal pure returns (uint) {
     uint256 e;
-    e += 1 + ProtoBufRuntime._sz_lendelim(r.Address.length);
     e += 1 + ProtoBufRuntime._sz_lendelim(r.pub_key.length);
     e += 1 + ProtoBufRuntime._sz_int64(r.voting_power);
     return e;
@@ -3705,10 +3664,6 @@ library Validator {
     Data memory r
   ) internal pure returns (bool) {
     
-  if (r.Address.length != 0) {
-    return false;
-  }
-
   if (r.pub_key.length != 0) {
     return false;
   }
@@ -3728,7 +3683,6 @@ library Validator {
    * @param output The in-storage struct
    */
   function store(Data memory input, Data storage output) internal {
-    output.Address = input.Address;
     output.pub_key = input.pub_key;
     output.voting_power = input.voting_power;
 

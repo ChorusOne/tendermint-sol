@@ -13,6 +13,13 @@ library Bytes {
         return abi.encodePacked(data);
     }
 
+    function toBytes20(bytes memory bz) internal pure returns (bytes20 ret) {
+        require(bz.length == 20, "Bytes: toBytes20 invalid size");
+        assembly {
+            ret := mload(add(bz, 32))
+        }
+    }
+
     function toUint64(bytes memory _bytes, uint256 _start) internal pure returns (uint64 ret) {
         require(_bytes.length >= _start + 8, "Bytes: toUint64 out of bounds");
         assembly {
@@ -34,6 +41,15 @@ library Bytes {
     function toAddress(bytes memory _bytes) internal pure returns (address addr) {
         // convert last 20 bytes of keccak hash (bytes32) to address
         bytes32 hash = keccak256(_bytes);
+        assembly {
+            mstore(0, hash)
+            addr := mload(0)
+        }
+    }
+
+    function toTmAddress(bytes memory _bytes) internal pure returns (bytes20 addr) {
+        // convert last 20 bytes of sha256 hash (bytes32) to address
+        bytes32 hash = sha256(_bytes);
         assembly {
             mstore(0, hash)
             addr := mload(0)

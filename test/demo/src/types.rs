@@ -104,7 +104,6 @@ pub fn to_validator_set(validators: &[tendermint::validator::Info]) -> Validator
         validators: validators
             .iter()
             .map(|validator| Validator {
-                address: validator.address.into(),
                 pub_key: validator.pub_key.to_bytes().to_vec(),
                 voting_power: validator.power.into(),
             })

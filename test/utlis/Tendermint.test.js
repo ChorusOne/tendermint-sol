@@ -40,6 +40,28 @@ contract('TendermintMock', () => {
   })
 
   it('verifies filtering validator set by address', async () => {
+      const mock = await TendermintMock.deployed()
+      const root = new protobuf.Root()
+
+      await root.load('./proto/TendermintLight.proto', { keepCase: true }).then(async function (root, err) {
+          if (err) { throw err }
+
+          const [sh, vs] = await lib.readHeader(8619996);
+          const ValidatorSet = root.lookupType('tendermint.light.ValidatorSet')
+          const encoded = await ValidatorSet.encode(vs).finish()
+          var { 0: index, 1: found } = await mock.getByAddress.call(encoded, sh.commit.signatures[0].validator_address)
+
+          assert.equal(index.toNumber(), 0, 'invalid index')
+          assert.equal(found, true, 'invalid search result')
+
+          var { 0: index, 1: found } = await mock.getByAddress.call(encoded, Buffer.from(Array(20).fill(0x1)))
+
+          assert.equal(index.toNumber(), 0, 'invalid index')
+          assert.equal(found, false, 'invalid search result')
+      })
+  })
+
+  it('verifies address derivation', async () => {
     const mock = await TendermintMock.deployed()
     const root = new protobuf.Root()
 
@@ -50,15 +72,9 @@ contract('TendermintMock', () => {
 
       const [sh, vs] = await lib.readHeader(8619996)
       const encoded = await ValidatorSet.encode(vs).finish()
-      const { 0: index, 1: found } = await mock.getByAddress.call(encoded, vs.validators[0].address)
+      const addr = await mock.getAddress.call(encoded, 0)
 
-      assert.equal(index.toNumber(), 0, 'invalid index')
-      assert.equal(found, true, 'invalid search result')
-
-      const { 0: index, 1: found } = await mock.getByAddress.call(encoded, Buffer.from([0x1, 0x2, 0x3]))
-
-      assert.equal(index.toNumber(), 0, 'invalid index')
-      assert.equal(found, false, 'invalid search result')
+      assert.equal(addr, lib.toHexString(sh.commit.signatures[0].validator_address), 'computed address must match Validator entry')
     })
   })
 
