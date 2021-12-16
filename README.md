@@ -9,7 +9,7 @@ Features:
 * implements IBC interface via [yui-ibc-solidity](https://github.com/hyperledger-labs/yui-ibc-solidity)
 
 The Light Client comes in **two branches**:
-* main - the code is a very close copy of the [ibc-go light client](https://github.com/cosmos/ibc-go/tree/main/modules/light-clients/07-tendermint)
+* main - the code is a very close copy of the [ibc-go light client](https://github.com/cosmos/ibc-go/tree/v2.0.0/modules/light-clients/07-tendermint)
 * optimized - the code has been sufficiently optimized to fit the Celo block gas limit (20M) while keeping all functionalities
 
 ## Light client in the nutshell
@@ -57,6 +57,9 @@ Some of the segments can also be measured via unittests (see `test/.*js`).
 * celo blockchain node (v1.3.2)
 * block headers relayed from CosmosHub public node
 * TM Light Client compiled with `0.8.2` solidity compiler
+* code checked out at:
+  * vanilla (`8434ff68a7a90b1670a64ab36c7cdfc43a5ce1ad`)
+  * optimized (`0a8acb90a8ef834e596538997859d6ee883dba97`)
 
 ### Running tests
 The Rust Demo program relays four headers from the Tendermint RPC node (e.g., cosmos hub) and calls light client code, particularly `CreateClient` and `CheckHeaderAndUpdateState`. In the non-adjacent mode, the second header is being skipped.
@@ -89,12 +92,12 @@ cargo run  -- --max-headers 4 --celo-gas-price 500000000 --celo-usd-price 5.20 -
 
 -----------
 
- height  | mode         | base cost        | serialization cost | check-validity cost | precompile cost  | total    | usage %
----------|--------------|------------------|--------------------|---------------------|------------------|----------|-----------
- 8619997 | adjacent     | 479499           | 11778610           | 3765129             | 106533           | 16400033 | 82.000165
- --      | --           | 2.923 %          | 71.820 %           | 22.958 %            | 0.6495 %         | 100 %    | --
- 8619998 | non-adjacent | 524934           | 18467356           | 7348189             | 156491           | 26734466 | 133.67233
- --      | --           | 1.963 %          | 69.07 %            | 27.485 %            | 0.585 %          | 100 %    | --
+ height  | mode         | base cost  | serialization cost | check-validity cost | precompile cost  | total    | gas limit | gas usage
+---------|--------------|------------|--------------------|---------------------|------------------|----------|-----------|------------
+ 8619997 | adjacent     | 479499     | 11778610           | 3765129             | 106533           | 16400033 | 20M       | 82.00 %
+ --      | --           | 2.923 %    | 71.820 %           | 22.958 %            | 0.6495 %         | 100 %    | --        | --
+ 8619998 | non-adjacent | 524934     | 18467356           | 7348189             | 156491           | 26734466 | 20M       | 133.67 %
+ --      | --           | 1.963 %    | 69.07 %            | 27.485 %            | 0.585 %          | 100 %    | --        | --
 
 
 
@@ -116,12 +119,12 @@ cargo run  -- --max-headers 4 --celo-gas-price 500000000 --celo-usd-price 5.20 -
 
 -----------
 
- height  | mode         | base cost        | serialization cost | check-validity cost | precompile cost   | total    | usage %   
----------|--------------|------------------|--------------------|---------------------|-------------------|----------|-----------
- 8619997 | adjacent     | 418250           | 8946684            | 3030160             | 97217             | 12657290 | 63.28  
- --      | --           | 3.30 %           | 70.68 %            | 23.94 %             | 0.768 %           | 100 %    | --             
- 8619998 | non-adjacent | 518520           | 11657129           | 5533894             | 132807            | 17976391 | 89.88 
- --      | --           | 2.88 %           | 64.846 %           | 30.784 %            | 0.738 %           | 100 %    | --      
+ height  | mode         | base cost  | serialization cost | check-validity cost | precompile cost   | total    | gas limit | gas usage
+---------|--------------|------------|--------------------|---------------------|-------------------|----------|-----------|-----------
+ 8619997 | adjacent     | 418250     | 8946684            | 3030160             | 97217             | 12657290 | 20M       | 63.28 %
+ --      | --           | 3.30 %     | 70.68 %            | 23.94 %             | 0.768 %           | 100 %    | --        | --
+ 8619998 | non-adjacent | 518520     | 11657129           | 5533894             | 132807            | 17976391 | 20M       | 89.88 %
+ --      | --           | 2.88 %     | 64.846 %           | 30.784 %            | 0.738 %           | 100 %    | --        | --
  
  
 ### Results overview
@@ -136,11 +139,13 @@ The Light Client contract fits into Celo Blockchain, but running it may be expen
 
 Potential optimizations:
 * serialization - the input data doesn't need to be protobuf serialized, so:
-** further protobuf structure unification/nesting removal
-** alternative (simpler) serialization format may be evaluated e.g., RLP
-** custom serialization - for example `|validator_pub_key|voting_power|` can be stored as one byte array
-** try out [another protobuf compiler](https://github.com/celestiaorg/protobuf3-solidity) - maps, nested enums are not supported
+  * further protobuf structure unification/nesting removal
+  * alternative (simpler) serialization format may be evaluated e.g., RLP
+  * custom serialization - for example `|validator_pub_key|voting_power|` can be stored as one byte array
+  * try out [another protobuf compiler](https://github.com/celestiaorg/protobuf3-solidity) - maps, nested enums are not supported
 * removal of non-adjacent mode - if anticipated?
+
+NOTE: gas limit (20M) is the maximum allowed gas per block on Celo blockchain mainnet (2021-12-16)
 
 ## Quick Start
 ```
