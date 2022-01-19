@@ -2,6 +2,7 @@
   "dependencies": {
     "@celo/contractkit": "^1.4.0",
     "@openzeppelin/contracts": "^4.3.2",
+    "@hyperledger-labs/yui-ibc-solidity": "git+https://github.com/siburu/yui-ibc-solidity.git#0a8bc8a1820b2ddad868244a605bc831ee5b4639",
     "solidity-bytes-utils": "^0.8.0",
     "web3": "^1.6.1"
   },
