@@ -31,7 +31,7 @@ for core_lib_file in \
 ; do
     cp sol/contracts/$core_lib_file ../contracts/ics23/
     sed -i "s/pragma experimental ABIEncoderV2;//g" ../contracts/ics23/$core_lib_file
-    sed -i "s/pragma solidity.*/pragma solidity ^0.8.2;/g" ../contracts/ics23/$core_lib_file
+    sed -i "s/pragma solidity.*/pragma solidity ^0.8.9;/g" ../contracts/ics23/$core_lib_file
 
     sed -i "s/bytes.concat(/abi.encodePacked(/g" ../contracts/ics23/$core_lib_file
     sed -i "s/\.\/proofs\.sol/\.\.\/proto\/proofs.sol/g" ../contracts/ics23/$core_lib_file
@@ -39,5 +39,5 @@ for core_lib_file in \
     sed -i "s/GNSPS\/solidity-bytes-utils@0.8.0/solidity-bytes-utils/g" ../contracts/ics23/$core_lib_file
     sed -i "s/\.\/ProtoBufRuntime.sol/\.\.\/proto\/ProtoBufRuntime.sol/g" ../contracts/ics23/$core_lib_file
 
-    echo -e "// SPDX-License-Identifier: TBD\n// Source: https://github.com/ChorusOne/ics23/tree/giulio/solidity\n$(cat ../contracts/ics23/${core_lib_file})" > ../contracts/ics23/$core_lib_file
+    echo -e "// Source: https://github.com/ChorusOne/ics23/tree/giulio/solidity\n$(cat ../contracts/ics23/${core_lib_file})" > ../contracts/ics23/$core_lib_file
 done;

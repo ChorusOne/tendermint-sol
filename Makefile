@@ -18,6 +18,10 @@ sol-format:
 import-ibc:
 	./scripts/import_ibc.sh
 
+.PHONY: import-ics23
+import-ics23:
+	./scripts/import_ics23.sh
+
 .PHONY: config
 config:
 	export CONF_TPL="./test/demo/src/consts.rs:./scripts/template/contract.rs.tpl" && truffle exec ./scripts/confgen.js --network=$(NETWORK)

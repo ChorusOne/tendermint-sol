@@ -1,7 +1,6 @@
-// SPDX-License-Identifier: TBD
 // Source: https://github.com/ChorusOne/ics23/tree/giulio/solidity
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.9;
 
 import {LeafOp, CompressedBatchProof, ExistenceProof, NonExistenceProof, BatchEntry, BatchProof, ProofSpec, InnerOp, InnerSpec, CommitmentProof} from "../proto/proofs.sol";
 import {Ops} from "./ics23Ops.sol";
