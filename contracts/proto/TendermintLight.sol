@@ -266,7 +266,7 @@ library Duration {
 
   //struct definition
   struct Data {
-    int64 seconds;
+    int64 Seconds;
     int32 nanos;
   }
 
@@ -316,7 +316,7 @@ library Duration {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_seconds(pointer, bs, r);
+        pointer += _read_Seconds(pointer, bs, r);
       } else
       if (fieldId == 2) {
         pointer += _read_nanos(pointer, bs, r);
@@ -338,13 +338,13 @@ library Duration {
    * @param r The in-memory struct
    * @return The number of bytes decoded
    */
-  function _read_seconds(
+  function _read_Seconds(
     uint256 p,
     bytes memory bs,
     Data memory r
   ) internal pure returns (uint) {
     (int64 x, uint256 sz) = ProtoBufRuntime._decode_int64(p, bs);
-    r.seconds = x;
+    r.Seconds = x;
     return sz;
   }
 
@@ -398,14 +398,14 @@ library Duration {
     uint256 offset = p;
     uint256 pointer = p;
     
-    if (r.seconds != 0) {
+    if (r.Seconds != 0) {
     pointer += ProtoBufRuntime._encode_key(
       1,
       ProtoBufRuntime.WireType.Varint,
       pointer,
       bs
     );
-    pointer += ProtoBufRuntime._encode_int64(r.seconds, pointer, bs);
+    pointer += ProtoBufRuntime._encode_int64(r.Seconds, pointer, bs);
     }
     if (r.nanos != 0) {
     pointer += ProtoBufRuntime._encode_key(
@@ -459,7 +459,7 @@ library Duration {
     Data memory r
   ) internal pure returns (uint) {
     uint256 e;
-    e += 1 + ProtoBufRuntime._sz_int64(r.seconds);
+    e += 1 + ProtoBufRuntime._sz_int64(r.Seconds);
     e += 1 + ProtoBufRuntime._sz_int32(r.nanos);
     return e;
   }
@@ -469,7 +469,7 @@ library Duration {
     Data memory r
   ) internal pure returns (bool) {
     
-  if (r.seconds != 0) {
+  if (r.Seconds != 0) {
     return false;
   }
 
@@ -488,7 +488,7 @@ library Duration {
    * @param output The in-storage struct
    */
   function store(Data memory input, Data storage output) internal {
-    output.seconds = input.seconds;
+    output.Seconds = input.Seconds;
     output.nanos = input.nanos;
 
   }
@@ -524,7 +524,7 @@ library Consensus {
 
   //struct definition
   struct Data {
-    uint64 block;
+    uint64 Block;
     uint64 app;
   }
 
@@ -574,7 +574,7 @@ library Consensus {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_block(pointer, bs, r);
+        pointer += _read_Block(pointer, bs, r);
       } else
       if (fieldId == 2) {
         pointer += _read_app(pointer, bs, r);
@@ -596,13 +596,13 @@ library Consensus {
    * @param r The in-memory struct
    * @return The number of bytes decoded
    */
-  function _read_block(
+  function _read_Block(
     uint256 p,
     bytes memory bs,
     Data memory r
   ) internal pure returns (uint) {
     (uint64 x, uint256 sz) = ProtoBufRuntime._decode_uint64(p, bs);
-    r.block = x;
+    r.Block = x;
     return sz;
   }
 
@@ -656,14 +656,14 @@ library Consensus {
     uint256 offset = p;
     uint256 pointer = p;
     
-    if (r.block != 0) {
+    if (r.Block != 0) {
     pointer += ProtoBufRuntime._encode_key(
       1,
       ProtoBufRuntime.WireType.Varint,
       pointer,
       bs
     );
-    pointer += ProtoBufRuntime._encode_uint64(r.block, pointer, bs);
+    pointer += ProtoBufRuntime._encode_uint64(r.Block, pointer, bs);
     }
     if (r.app != 0) {
     pointer += ProtoBufRuntime._encode_key(
@@ -717,7 +717,7 @@ library Consensus {
     Data memory r
   ) internal pure returns (uint) {
     uint256 e;
-    e += 1 + ProtoBufRuntime._sz_uint64(r.block);
+    e += 1 + ProtoBufRuntime._sz_uint64(r.Block);
     e += 1 + ProtoBufRuntime._sz_uint64(r.app);
     return e;
   }
@@ -727,7 +727,7 @@ library Consensus {
     Data memory r
   ) internal pure returns (bool) {
     
-  if (r.block != 0) {
+  if (r.Block != 0) {
     return false;
   }
 
@@ -746,7 +746,7 @@ library Consensus {
    * @param output The in-storage struct
    */
   function store(Data memory input, Data storage output) internal {
-    output.block = input.block;
+    output.Block = input.Block;
     output.app = input.app;
 
   }
@@ -2157,7 +2157,7 @@ library CanonicalVote {
 
   //struct definition
   struct Data {
-    TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.SignedMsgType type;
+    TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.SignedMsgType Type;
     int64 height;
     int64 round;
     CanonicalBlockID.Data block_id;
@@ -2211,7 +2211,7 @@ library CanonicalVote {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_type(pointer, bs, r);
+        pointer += _read_Type(pointer, bs, r);
       } else
       if (fieldId == 2) {
         pointer += _read_height(pointer, bs, r);
@@ -2245,14 +2245,14 @@ library CanonicalVote {
    * @param r The in-memory struct
    * @return The number of bytes decoded
    */
-  function _read_type(
+  function _read_Type(
     uint256 p,
     bytes memory bs,
     Data memory r
   ) internal pure returns (uint) {
     (int64 tmp, uint256 sz) = ProtoBufRuntime._decode_enum(p, bs);
     TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.SignedMsgType x = TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.decode_SignedMsgType(tmp);
-    r.type = x;
+    r.Type = x;
     return sz;
   }
 
@@ -2413,15 +2413,15 @@ library CanonicalVote {
     uint256 offset = p;
     uint256 pointer = p;
     
-    if (uint(r.type) != 0) {
+    if (uint(r.Type) != 0) {
     pointer += ProtoBufRuntime._encode_key(
       1,
       ProtoBufRuntime.WireType.Varint,
       pointer,
       bs
     );
-    int32 _enum_type = TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.encode_SignedMsgType(r.type);
-    pointer += ProtoBufRuntime._encode_enum(_enum_type, pointer, bs);
+    int32 _enum_Type = TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.encode_SignedMsgType(r.Type);
+    pointer += ProtoBufRuntime._encode_enum(_enum_Type, pointer, bs);
     }
     if (r.height != 0) {
     pointer += ProtoBufRuntime._encode_key(
@@ -2511,7 +2511,7 @@ library CanonicalVote {
     Data memory r
   ) internal pure returns (uint) {
     uint256 e;
-    e += 1 + ProtoBufRuntime._sz_enum(TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.encode_SignedMsgType(r.type));
+    e += 1 + ProtoBufRuntime._sz_enum(TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.encode_SignedMsgType(r.Type));
     e += 1 + 8;
     e += 1 + 8;
     e += 1 + ProtoBufRuntime._sz_lendelim(CanonicalBlockID._estimate(r.block_id));
@@ -2525,7 +2525,7 @@ library CanonicalVote {
     Data memory r
   ) internal pure returns (bool) {
     
-  if (uint(r.type) != 0) {
+  if (uint(r.Type) != 0) {
     return false;
   }
 
@@ -2552,7 +2552,7 @@ library CanonicalVote {
    * @param output The in-storage struct
    */
   function store(Data memory input, Data storage output) internal {
-    output.type = input.type;
+    output.Type = input.Type;
     output.height = input.height;
     output.round = input.round;
     CanonicalBlockID.store(input.block_id, output.block_id);
@@ -3947,7 +3947,7 @@ library Timestamp {
 
   //struct definition
   struct Data {
-    int64 seconds;
+    int64 Seconds;
     int32 nanos;
   }
 
@@ -3997,7 +3997,7 @@ library Timestamp {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_seconds(pointer, bs, r);
+        pointer += _read_Seconds(pointer, bs, r);
       } else
       if (fieldId == 2) {
         pointer += _read_nanos(pointer, bs, r);
@@ -4019,13 +4019,13 @@ library Timestamp {
    * @param r The in-memory struct
    * @return The number of bytes decoded
    */
-  function _read_seconds(
+  function _read_Seconds(
     uint256 p,
     bytes memory bs,
     Data memory r
   ) internal pure returns (uint) {
     (int64 x, uint256 sz) = ProtoBufRuntime._decode_int64(p, bs);
-    r.seconds = x;
+    r.Seconds = x;
     return sz;
   }
 
@@ -4079,14 +4079,14 @@ library Timestamp {
     uint256 offset = p;
     uint256 pointer = p;
     
-    if (r.seconds != 0) {
+    if (r.Seconds != 0) {
     pointer += ProtoBufRuntime._encode_key(
       1,
       ProtoBufRuntime.WireType.Varint,
       pointer,
       bs
     );
-    pointer += ProtoBufRuntime._encode_int64(r.seconds, pointer, bs);
+    pointer += ProtoBufRuntime._encode_int64(r.Seconds, pointer, bs);
     }
     if (r.nanos != 0) {
     pointer += ProtoBufRuntime._encode_key(
@@ -4140,7 +4140,7 @@ library Timestamp {
     Data memory r
   ) internal pure returns (uint) {
     uint256 e;
-    e += 1 + ProtoBufRuntime._sz_int64(r.seconds);
+    e += 1 + ProtoBufRuntime._sz_int64(r.Seconds);
     e += 1 + ProtoBufRuntime._sz_int32(r.nanos);
     return e;
   }
@@ -4150,7 +4150,7 @@ library Timestamp {
     Data memory r
   ) internal pure returns (bool) {
     
-  if (r.seconds != 0) {
+  if (r.Seconds != 0) {
     return false;
   }
 
@@ -4169,7 +4169,7 @@ library Timestamp {
    * @param output The in-storage struct
    */
   function store(Data memory input, Data storage output) internal {
-    output.seconds = input.seconds;
+    output.Seconds = input.Seconds;
     output.nanos = input.nanos;
 
   }
