@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.2;
-import "./ProtoBufRuntime.sol";
-import "./GoogleProtobufAny.sol";
+pragma solidity ^0.8.9;
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/ProtoBufRuntime.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/GoogleProtobufAny.sol";
 
 library ExistenceProof {
 
@@ -61,81 +61,36 @@ library ExistenceProof {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_key(pointer, bs, r, counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_value(pointer, bs, r, counters);
-      }
-      else if (fieldId == 3) {
-        pointer += _read_leaf(pointer, bs, r, counters);
-      }
-      else if (fieldId == 4) {
-        pointer += _read_path(pointer, bs, nil(), counters);
-      }
-      
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+        pointer += _read_key(pointer, bs, r);
+      } else
+      if (fieldId == 2) {
+        pointer += _read_value(pointer, bs, r);
+      } else
+      if (fieldId == 3) {
+        pointer += _read_leaf(pointer, bs, r);
+      } else
+      if (fieldId == 4) {
+        pointer += _read_unpacked_repeated_path(pointer, bs, nil(), counters);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
 
     }
     pointer = offset;
-    r.path = new InnerOp.Data[](counters[4]);
+    if (counters[4] > 0) {
+      require(r.path.length == 0);
+      r.path = new InnerOp.Data[](counters[4]);
+    }
 
     while (pointer < offset + sz) {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
-      if (fieldId == 1) {
-        pointer += _read_key(pointer, bs, nil(), counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_value(pointer, bs, nil(), counters);
-      }
-      else if (fieldId == 3) {
-        pointer += _read_leaf(pointer, bs, nil(), counters);
-      }
-      else if (fieldId == 4) {
-        pointer += _read_path(pointer, bs, r, counters);
-      }
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+      if (fieldId == 4) {
+        pointer += _read_unpacked_repeated_path(pointer, bs, r, counters);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
     }
     return (r, sz);
@@ -148,25 +103,15 @@ library ExistenceProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_key(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[5] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
-    if (isNil(r)) {
-      counters[1] += 1;
-    } else {
-      r.key = x;
-      if (counters[1] > 0) counters[1] -= 1;
-    }
+    r.key = x;
     return sz;
   }
 
@@ -175,25 +120,15 @@ library ExistenceProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_value(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[5] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
-    if (isNil(r)) {
-      counters[2] += 1;
-    } else {
-      r.value = x;
-      if (counters[2] > 0) counters[2] -= 1;
-    }
+    r.value = x;
     return sz;
   }
 
@@ -202,25 +137,15 @@ library ExistenceProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_leaf(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[5] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (LeafOp.Data memory x, uint256 sz) = _decode_LeafOp(p, bs);
-    if (isNil(r)) {
-      counters[3] += 1;
-    } else {
-      r.leaf = x;
-      if (counters[3] > 0) counters[3] -= 1;
-    }
+    r.leaf = x;
     return sz;
   }
 
@@ -232,7 +157,7 @@ library ExistenceProof {
    * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
-  function _read_path(
+  function _read_unpacked_repeated_path(
     uint256 p,
     bytes memory bs,
     Data memory r,
@@ -246,7 +171,7 @@ library ExistenceProof {
       counters[4] += 1;
     } else {
       r.path[r.path.length - counters[4]] = x;
-      if (counters[4] > 0) counters[4] -= 1;
+      counters[4] -= 1;
     }
     return sz;
   }
@@ -377,10 +302,10 @@ library ExistenceProof {
     pure
     returns (uint)
   {
-    //
-    // First encoded `r` into a temporary array, and encode the actual size used.
-    // Then copy the temporary array into `bs`.
-    //
+    /**
+     * First encoded `r` into a temporary array, and encode the actual size used.
+     * Then copy the temporary array into `bs`.
+     */
     uint256 offset = p;
     uint256 pointer = p;
     bytes memory tmp = new bytes(_estimate(r));
@@ -543,7 +468,6 @@ library NonExistenceProof {
     returns (Data memory, uint)
   {
     Data memory r;
-    uint[4] memory counters;
     uint256 fieldId;
     ProtoBufRuntime.WireType wireType;
     uint256 bytesRead;
@@ -553,36 +477,16 @@ library NonExistenceProof {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_key(pointer, bs, r, counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_left(pointer, bs, r, counters);
-      }
-      else if (fieldId == 3) {
-        pointer += _read_right(pointer, bs, r, counters);
-      }
-      
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+        pointer += _read_key(pointer, bs, r);
+      } else
+      if (fieldId == 2) {
+        pointer += _read_left(pointer, bs, r);
+      } else
+      if (fieldId == 3) {
+        pointer += _read_right(pointer, bs, r);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
 
     }
@@ -596,25 +500,15 @@ library NonExistenceProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_key(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[4] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
-    if (isNil(r)) {
-      counters[1] += 1;
-    } else {
-      r.key = x;
-      if (counters[1] > 0) counters[1] -= 1;
-    }
+    r.key = x;
     return sz;
   }
 
@@ -623,25 +517,15 @@ library NonExistenceProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_left(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[4] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (ExistenceProof.Data memory x, uint256 sz) = _decode_ExistenceProof(p, bs);
-    if (isNil(r)) {
-      counters[2] += 1;
-    } else {
-      r.left = x;
-      if (counters[2] > 0) counters[2] -= 1;
-    }
+    r.left = x;
     return sz;
   }
 
@@ -650,25 +534,15 @@ library NonExistenceProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_right(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[4] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (ExistenceProof.Data memory x, uint256 sz) = _decode_ExistenceProof(p, bs);
-    if (isNil(r)) {
-      counters[3] += 1;
-    } else {
-      r.right = x;
-      if (counters[3] > 0) counters[3] -= 1;
-    }
+    r.right = x;
     return sz;
   }
 
@@ -768,10 +642,10 @@ library NonExistenceProof {
     pure
     returns (uint)
   {
-    //
-    // First encoded `r` into a temporary array, and encode the actual size used.
-    // Then copy the temporary array into `bs`.
-    //
+    /**
+     * First encoded `r` into a temporary array, and encode the actual size used.
+     * Then copy the temporary array into `bs`.
+     */
     uint256 offset = p;
     uint256 pointer = p;
     bytes memory tmp = new bytes(_estimate(r));
@@ -901,7 +775,6 @@ library CommitmentProof {
     returns (Data memory, uint)
   {
     Data memory r;
-    uint[5] memory counters;
     uint256 fieldId;
     ProtoBufRuntime.WireType wireType;
     uint256 bytesRead;
@@ -911,39 +784,19 @@ library CommitmentProof {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_exist(pointer, bs, r, counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_nonexist(pointer, bs, r, counters);
-      }
-      else if (fieldId == 3) {
-        pointer += _read_batch(pointer, bs, r, counters);
-      }
-      else if (fieldId == 4) {
-        pointer += _read_compressed(pointer, bs, r, counters);
-      }
-      
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+        pointer += _read_exist(pointer, bs, r);
+      } else
+      if (fieldId == 2) {
+        pointer += _read_nonexist(pointer, bs, r);
+      } else
+      if (fieldId == 3) {
+        pointer += _read_batch(pointer, bs, r);
+      } else
+      if (fieldId == 4) {
+        pointer += _read_compressed(pointer, bs, r);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
 
     }
@@ -957,25 +810,15 @@ library CommitmentProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_exist(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[5] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (ExistenceProof.Data memory x, uint256 sz) = _decode_ExistenceProof(p, bs);
-    if (isNil(r)) {
-      counters[1] += 1;
-    } else {
-      r.exist = x;
-      if (counters[1] > 0) counters[1] -= 1;
-    }
+    r.exist = x;
     return sz;
   }
 
@@ -984,25 +827,15 @@ library CommitmentProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_nonexist(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[5] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (NonExistenceProof.Data memory x, uint256 sz) = _decode_NonExistenceProof(p, bs);
-    if (isNil(r)) {
-      counters[2] += 1;
-    } else {
-      r.nonexist = x;
-      if (counters[2] > 0) counters[2] -= 1;
-    }
+    r.nonexist = x;
     return sz;
   }
 
@@ -1011,25 +844,15 @@ library CommitmentProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_batch(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[5] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (BatchProof.Data memory x, uint256 sz) = _decode_BatchProof(p, bs);
-    if (isNil(r)) {
-      counters[3] += 1;
-    } else {
-      r.batch = x;
-      if (counters[3] > 0) counters[3] -= 1;
-    }
+    r.batch = x;
     return sz;
   }
 
@@ -1038,25 +861,15 @@ library CommitmentProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_compressed(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[5] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (CompressedBatchProof.Data memory x, uint256 sz) = _decode_CompressedBatchProof(p, bs);
-    if (isNil(r)) {
-      counters[4] += 1;
-    } else {
-      r.compressed = x;
-      if (counters[4] > 0) counters[4] -= 1;
-    }
+    r.compressed = x;
     return sz;
   }
 
@@ -1222,10 +1035,10 @@ library CommitmentProof {
     pure
     returns (uint)
   {
-    //
-    // First encoded `r` into a temporary array, and encode the actual size used.
-    // Then copy the temporary array into `bs`.
-    //
+    /**
+     * First encoded `r` into a temporary array, and encode the actual size used.
+     * Then copy the temporary array into `bs`.
+     */
     uint256 offset = p;
     uint256 pointer = p;
     bytes memory tmp = new bytes(_estimate(r));
@@ -1354,7 +1167,6 @@ library LeafOp {
     returns (Data memory, uint)
   {
     Data memory r;
-    uint[6] memory counters;
     uint256 fieldId;
     ProtoBufRuntime.WireType wireType;
     uint256 bytesRead;
@@ -1364,42 +1176,22 @@ library LeafOp {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_hash(pointer, bs, r, counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_prehash_key(pointer, bs, r, counters);
-      }
-      else if (fieldId == 3) {
-        pointer += _read_prehash_value(pointer, bs, r, counters);
-      }
-      else if (fieldId == 4) {
-        pointer += _read_length(pointer, bs, r, counters);
-      }
-      else if (fieldId == 5) {
-        pointer += _read_prefix(pointer, bs, r, counters);
-      }
-      
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+        pointer += _read_hash(pointer, bs, r);
+      } else
+      if (fieldId == 2) {
+        pointer += _read_prehash_key(pointer, bs, r);
+      } else
+      if (fieldId == 3) {
+        pointer += _read_prehash_value(pointer, bs, r);
+      } else
+      if (fieldId == 4) {
+        pointer += _read_length(pointer, bs, r);
+      } else
+      if (fieldId == 5) {
+        pointer += _read_prefix(pointer, bs, r);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
 
     }
@@ -1413,26 +1205,16 @@ library LeafOp {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_hash(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[6] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (int64 tmp, uint256 sz) = ProtoBufRuntime._decode_enum(p, bs);
     PROOFS_PROTO_GLOBAL_ENUMS.HashOp x = PROOFS_PROTO_GLOBAL_ENUMS.decode_HashOp(tmp);
-    if (isNil(r)) {
-      counters[1] += 1;
-    } else {
-      r.hash = x;
-      if(counters[1] > 0) counters[1] -= 1;
-    }
+    r.hash = x;
     return sz;
   }
 
@@ -1441,26 +1223,16 @@ library LeafOp {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_prehash_key(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[6] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (int64 tmp, uint256 sz) = ProtoBufRuntime._decode_enum(p, bs);
     PROOFS_PROTO_GLOBAL_ENUMS.HashOp x = PROOFS_PROTO_GLOBAL_ENUMS.decode_HashOp(tmp);
-    if (isNil(r)) {
-      counters[2] += 1;
-    } else {
-      r.prehash_key = x;
-      if(counters[2] > 0) counters[2] -= 1;
-    }
+    r.prehash_key = x;
     return sz;
   }
 
@@ -1469,26 +1241,16 @@ library LeafOp {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_prehash_value(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[6] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (int64 tmp, uint256 sz) = ProtoBufRuntime._decode_enum(p, bs);
     PROOFS_PROTO_GLOBAL_ENUMS.HashOp x = PROOFS_PROTO_GLOBAL_ENUMS.decode_HashOp(tmp);
-    if (isNil(r)) {
-      counters[3] += 1;
-    } else {
-      r.prehash_value = x;
-      if(counters[3] > 0) counters[3] -= 1;
-    }
+    r.prehash_value = x;
     return sz;
   }
 
@@ -1497,26 +1259,16 @@ library LeafOp {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_length(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[6] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (int64 tmp, uint256 sz) = ProtoBufRuntime._decode_enum(p, bs);
     PROOFS_PROTO_GLOBAL_ENUMS.LengthOp x = PROOFS_PROTO_GLOBAL_ENUMS.decode_LengthOp(tmp);
-    if (isNil(r)) {
-      counters[4] += 1;
-    } else {
-      r.length = x;
-      if(counters[4] > 0) counters[4] -= 1;
-    }
+    r.length = x;
     return sz;
   }
 
@@ -1525,25 +1277,15 @@ library LeafOp {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_prefix(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[6] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
-    if (isNil(r)) {
-      counters[5] += 1;
-    } else {
-      r.prefix = x;
-      if (counters[5] > 0) counters[5] -= 1;
-    }
+    r.prefix = x;
     return sz;
   }
 
@@ -1645,10 +1387,10 @@ library LeafOp {
     pure
     returns (uint)
   {
-    //
-    // First encoded `r` into a temporary array, and encode the actual size used.
-    // Then copy the temporary array into `bs`.
-    //
+    /**
+     * First encoded `r` into a temporary array, and encode the actual size used.
+     * Then copy the temporary array into `bs`.
+     */
     uint256 offset = p;
     uint256 pointer = p;
     bytes memory tmp = new bytes(_estimate(r));
@@ -1797,7 +1539,6 @@ library InnerOp {
     returns (Data memory, uint)
   {
     Data memory r;
-    uint[4] memory counters;
     uint256 fieldId;
     ProtoBufRuntime.WireType wireType;
     uint256 bytesRead;
@@ -1807,36 +1548,16 @@ library InnerOp {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_hash(pointer, bs, r, counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_prefix(pointer, bs, r, counters);
-      }
-      else if (fieldId == 3) {
-        pointer += _read_suffix(pointer, bs, r, counters);
-      }
-      
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+        pointer += _read_hash(pointer, bs, r);
+      } else
+      if (fieldId == 2) {
+        pointer += _read_prefix(pointer, bs, r);
+      } else
+      if (fieldId == 3) {
+        pointer += _read_suffix(pointer, bs, r);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
 
     }
@@ -1850,26 +1571,16 @@ library InnerOp {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_hash(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[4] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (int64 tmp, uint256 sz) = ProtoBufRuntime._decode_enum(p, bs);
     PROOFS_PROTO_GLOBAL_ENUMS.HashOp x = PROOFS_PROTO_GLOBAL_ENUMS.decode_HashOp(tmp);
-    if (isNil(r)) {
-      counters[1] += 1;
-    } else {
-      r.hash = x;
-      if(counters[1] > 0) counters[1] -= 1;
-    }
+    r.hash = x;
     return sz;
   }
 
@@ -1878,25 +1589,15 @@ library InnerOp {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_prefix(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[4] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
-    if (isNil(r)) {
-      counters[2] += 1;
-    } else {
-      r.prefix = x;
-      if (counters[2] > 0) counters[2] -= 1;
-    }
+    r.prefix = x;
     return sz;
   }
 
@@ -1905,25 +1606,15 @@ library InnerOp {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_suffix(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[4] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
-    if (isNil(r)) {
-      counters[3] += 1;
-    } else {
-      r.suffix = x;
-      if (counters[3] > 0) counters[3] -= 1;
-    }
+    r.suffix = x;
     return sz;
   }
 
@@ -2004,10 +1695,10 @@ library InnerOp {
     pure
     returns (uint)
   {
-    //
-    // First encoded `r` into a temporary array, and encode the actual size used.
-    // Then copy the temporary array into `bs`.
-    //
+    /**
+     * First encoded `r` into a temporary array, and encode the actual size used.
+     * Then copy the temporary array into `bs`.
+     */
     uint256 offset = p;
     uint256 pointer = p;
     bytes memory tmp = new bytes(_estimate(r));
@@ -2145,7 +1836,6 @@ library ProofSpec {
     returns (Data memory, uint)
   {
     Data memory r;
-    uint[5] memory counters;
     uint256 fieldId;
     ProtoBufRuntime.WireType wireType;
     uint256 bytesRead;
@@ -2155,39 +1845,19 @@ library ProofSpec {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_leaf_spec(pointer, bs, r, counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_inner_spec(pointer, bs, r, counters);
-      }
-      else if (fieldId == 3) {
-        pointer += _read_max_depth(pointer, bs, r, counters);
-      }
-      else if (fieldId == 4) {
-        pointer += _read_min_depth(pointer, bs, r, counters);
-      }
-      
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+        pointer += _read_leaf_spec(pointer, bs, r);
+      } else
+      if (fieldId == 2) {
+        pointer += _read_inner_spec(pointer, bs, r);
+      } else
+      if (fieldId == 3) {
+        pointer += _read_max_depth(pointer, bs, r);
+      } else
+      if (fieldId == 4) {
+        pointer += _read_min_depth(pointer, bs, r);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
 
     }
@@ -2201,25 +1871,15 @@ library ProofSpec {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_leaf_spec(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[5] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (LeafOp.Data memory x, uint256 sz) = _decode_LeafOp(p, bs);
-    if (isNil(r)) {
-      counters[1] += 1;
-    } else {
-      r.leaf_spec = x;
-      if (counters[1] > 0) counters[1] -= 1;
-    }
+    r.leaf_spec = x;
     return sz;
   }
 
@@ -2228,25 +1888,15 @@ library ProofSpec {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_inner_spec(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[5] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (InnerSpec.Data memory x, uint256 sz) = _decode_InnerSpec(p, bs);
-    if (isNil(r)) {
-      counters[2] += 1;
-    } else {
-      r.inner_spec = x;
-      if (counters[2] > 0) counters[2] -= 1;
-    }
+    r.inner_spec = x;
     return sz;
   }
 
@@ -2255,25 +1905,15 @@ library ProofSpec {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_max_depth(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[5] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (int32 x, uint256 sz) = ProtoBufRuntime._decode_int32(p, bs);
-    if (isNil(r)) {
-      counters[3] += 1;
-    } else {
-      r.max_depth = x;
-      if (counters[3] > 0) counters[3] -= 1;
-    }
+    r.max_depth = x;
     return sz;
   }
 
@@ -2282,25 +1922,15 @@ library ProofSpec {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_min_depth(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[5] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (int32 x, uint256 sz) = ProtoBufRuntime._decode_int32(p, bs);
-    if (isNil(r)) {
-      counters[4] += 1;
-    } else {
-      r.min_depth = x;
-      if (counters[4] > 0) counters[4] -= 1;
-    }
+    r.min_depth = x;
     return sz;
   }
 
@@ -2428,10 +2058,10 @@ library ProofSpec {
     pure
     returns (uint)
   {
-    //
-    // First encoded `r` into a temporary array, and encode the actual size used.
-    // Then copy the temporary array into `bs`.
-    //
+    /**
+     * First encoded `r` into a temporary array, and encode the actual size used.
+     * Then copy the temporary array into `bs`.
+     */
     uint256 offset = p;
     uint256 pointer = p;
     bytes memory tmp = new bytes(_estimate(r));
@@ -2579,93 +2209,46 @@ library InnerSpec {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_child_order(pointer, bs, nil(), counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_child_size(pointer, bs, r, counters);
-      }
-      else if (fieldId == 3) {
-        pointer += _read_min_prefix_length(pointer, bs, r, counters);
-      }
-      else if (fieldId == 4) {
-        pointer += _read_max_prefix_length(pointer, bs, r, counters);
-      }
-      else if (fieldId == 5) {
-        pointer += _read_empty_child(pointer, bs, r, counters);
-      }
-      else if (fieldId == 6) {
-        pointer += _read_hash(pointer, bs, r, counters);
-      }
-      
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
         if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
+          pointer += _read_packed_repeated_child_order(pointer, bs, r);
+        } else {
+          pointer += _read_unpacked_repeated_child_order(pointer, bs, nil(), counters);
         }
+      } else
+      if (fieldId == 2) {
+        pointer += _read_child_size(pointer, bs, r);
+      } else
+      if (fieldId == 3) {
+        pointer += _read_min_prefix_length(pointer, bs, r);
+      } else
+      if (fieldId == 4) {
+        pointer += _read_max_prefix_length(pointer, bs, r);
+      } else
+      if (fieldId == 5) {
+        pointer += _read_empty_child(pointer, bs, r);
+      } else
+      if (fieldId == 6) {
+        pointer += _read_hash(pointer, bs, r);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
 
     }
     pointer = offset;
-    r.child_order = new int32[](counters[1]);
+    if (counters[1] > 0) {
+      require(r.child_order.length == 0);
+      r.child_order = new int32[](counters[1]);
+    }
 
     while (pointer < offset + sz) {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
-      if (fieldId == 1) {
-        pointer += _read_child_order(pointer, bs, r, counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_child_size(pointer, bs, nil(), counters);
-      }
-      else if (fieldId == 3) {
-        pointer += _read_min_prefix_length(pointer, bs, nil(), counters);
-      }
-      else if (fieldId == 4) {
-        pointer += _read_max_prefix_length(pointer, bs, nil(), counters);
-      }
-      else if (fieldId == 5) {
-        pointer += _read_empty_child(pointer, bs, nil(), counters);
-      }
-      else if (fieldId == 6) {
-        pointer += _read_hash(pointer, bs, nil(), counters);
-      }
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+      if (fieldId == 1 && wireType != ProtoBufRuntime.WireType.LengthDelim) {
+        pointer += _read_unpacked_repeated_child_order(pointer, bs, r, counters);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
     }
     return (r, sz);
@@ -2681,7 +2264,7 @@ library InnerSpec {
    * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
-  function _read_child_order(
+  function _read_unpacked_repeated_child_order(
     uint256 p,
     bytes memory bs,
     Data memory r,
@@ -2695,7 +2278,7 @@ library InnerSpec {
       counters[1] += 1;
     } else {
       r.child_order[r.child_order.length - counters[1]] = x;
-      if (counters[1] > 0) counters[1] -= 1;
+      counters[1] -= 1;
     }
     return sz;
   }
@@ -2705,25 +2288,39 @@ library InnerSpec {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
+   * @return The number of bytes decoded
+   */
+  function _read_packed_repeated_child_order(
+    uint256 p,
+    bytes memory bs,
+    Data memory r
+  ) internal pure returns (uint) {
+    (uint256 len, uint256 size) = ProtoBufRuntime._decode_varint(p, bs);
+    p += size;
+    uint256 count = ProtoBufRuntime._count_packed_repeated_varint(p, len, bs);
+    r.child_order = new int32[](count);
+    for (uint256 i = 0; i < count; i++) {
+      (int32 x, uint256 sz) = ProtoBufRuntime._decode_int32(p, bs);
+      p += sz;
+      r.child_order[i] = x;
+    }
+    return size + len;
+  }
+
+  /**
+   * @dev The decoder for reading a field
+   * @param p The offset of bytes array to start decode
+   * @param bs The bytes array to be decoded
+   * @param r The in-memory struct
    * @return The number of bytes decoded
    */
   function _read_child_size(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[7] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (int32 x, uint256 sz) = ProtoBufRuntime._decode_int32(p, bs);
-    if (isNil(r)) {
-      counters[2] += 1;
-    } else {
-      r.child_size = x;
-      if (counters[2] > 0) counters[2] -= 1;
-    }
+    r.child_size = x;
     return sz;
   }
 
@@ -2732,25 +2329,15 @@ library InnerSpec {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_min_prefix_length(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[7] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (int32 x, uint256 sz) = ProtoBufRuntime._decode_int32(p, bs);
-    if (isNil(r)) {
-      counters[3] += 1;
-    } else {
-      r.min_prefix_length = x;
-      if (counters[3] > 0) counters[3] -= 1;
-    }
+    r.min_prefix_length = x;
     return sz;
   }
 
@@ -2759,25 +2346,15 @@ library InnerSpec {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_max_prefix_length(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[7] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (int32 x, uint256 sz) = ProtoBufRuntime._decode_int32(p, bs);
-    if (isNil(r)) {
-      counters[4] += 1;
-    } else {
-      r.max_prefix_length = x;
-      if (counters[4] > 0) counters[4] -= 1;
-    }
+    r.max_prefix_length = x;
     return sz;
   }
 
@@ -2786,25 +2363,15 @@ library InnerSpec {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_empty_child(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[7] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
-    if (isNil(r)) {
-      counters[5] += 1;
-    } else {
-      r.empty_child = x;
-      if (counters[5] > 0) counters[5] -= 1;
-    }
+    r.empty_child = x;
     return sz;
   }
 
@@ -2813,26 +2380,16 @@ library InnerSpec {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_hash(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[7] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (int64 tmp, uint256 sz) = ProtoBufRuntime._decode_enum(p, bs);
     PROOFS_PROTO_GLOBAL_ENUMS.HashOp x = PROOFS_PROTO_GLOBAL_ENUMS.decode_HashOp(tmp);
-    if (isNil(r)) {
-      counters[6] += 1;
-    } else {
-      r.hash = x;
-      if(counters[6] > 0) counters[6] -= 1;
-    }
+    r.hash = x;
     return sz;
   }
 
@@ -2870,13 +2427,18 @@ library InnerSpec {
     uint256 pointer = p;
     uint256 i;
     if (r.child_order.length != 0) {
+    pointer += ProtoBufRuntime._encode_key(
+      1,
+      ProtoBufRuntime.WireType.LengthDelim,
+      pointer,
+      bs
+    );
+    pointer += ProtoBufRuntime._encode_varint(
+      ProtoBufRuntime._estimate_packed_repeated_int32(r.child_order),
+      pointer,
+      bs
+    );
     for(i = 0; i < r.child_order.length; i++) {
-      pointer += ProtoBufRuntime._encode_key(
-        1,
-        ProtoBufRuntime.WireType.Varint,
-        pointer,
-        bs)
-      ;
       pointer += ProtoBufRuntime._encode_int32(r.child_order[i], pointer, bs);
     }
     }
@@ -2942,10 +2504,10 @@ library InnerSpec {
     pure
     returns (uint)
   {
-    //
-    // First encoded `r` into a temporary array, and encode the actual size used.
-    // Then copy the temporary array into `bs`.
-    //
+    /**
+     * First encoded `r` into a temporary array, and encode the actual size used.
+     * Then copy the temporary array into `bs`.
+     */
     uint256 offset = p;
     uint256 pointer = p;
     bytes memory tmp = new bytes(_estimate(r));
@@ -2969,9 +2531,7 @@ library InnerSpec {
     Data memory r
   ) internal pure returns (uint) {
     uint256 e;uint256 i;
-    for(i = 0; i < r.child_order.length; i++) {
-      e += 1 + ProtoBufRuntime._sz_int32(r.child_order[i]);
-    }
+    e += 1 + ProtoBufRuntime._sz_lendelim(ProtoBufRuntime._estimate_packed_repeated_int32(r.child_order));
     e += 1 + ProtoBufRuntime._sz_int32(r.child_size);
     e += 1 + ProtoBufRuntime._sz_int32(r.min_prefix_length);
     e += 1 + ProtoBufRuntime._sz_int32(r.max_prefix_length);
@@ -3128,63 +2688,27 @@ library BatchProof {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_entries(pointer, bs, nil(), counters);
-      }
-      
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+        pointer += _read_unpacked_repeated_entries(pointer, bs, nil(), counters);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
 
     }
     pointer = offset;
-    r.entries = new BatchEntry.Data[](counters[1]);
+    if (counters[1] > 0) {
+      require(r.entries.length == 0);
+      r.entries = new BatchEntry.Data[](counters[1]);
+    }
 
     while (pointer < offset + sz) {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_entries(pointer, bs, r, counters);
-      }
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+        pointer += _read_unpacked_repeated_entries(pointer, bs, r, counters);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
     }
     return (r, sz);
@@ -3200,7 +2724,7 @@ library BatchProof {
    * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
-  function _read_entries(
+  function _read_unpacked_repeated_entries(
     uint256 p,
     bytes memory bs,
     Data memory r,
@@ -3214,7 +2738,7 @@ library BatchProof {
       counters[1] += 1;
     } else {
       r.entries[r.entries.length - counters[1]] = x;
-      if (counters[1] > 0) counters[1] -= 1;
+      counters[1] -= 1;
     }
     return sz;
   }
@@ -3299,10 +2823,10 @@ library BatchProof {
     pure
     returns (uint)
   {
-    //
-    // First encoded `r` into a temporary array, and encode the actual size used.
-    // Then copy the temporary array into `bs`.
-    //
+    /**
+     * First encoded `r` into a temporary array, and encode the actual size used.
+     * Then copy the temporary array into `bs`.
+     */
     uint256 offset = p;
     uint256 pointer = p;
     bytes memory tmp = new bytes(_estimate(r));
@@ -3450,7 +2974,6 @@ library BatchEntry {
     returns (Data memory, uint)
   {
     Data memory r;
-    uint[3] memory counters;
     uint256 fieldId;
     ProtoBufRuntime.WireType wireType;
     uint256 bytesRead;
@@ -3460,33 +2983,13 @@ library BatchEntry {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_exist(pointer, bs, r, counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_nonexist(pointer, bs, r, counters);
-      }
-      
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+        pointer += _read_exist(pointer, bs, r);
+      } else
+      if (fieldId == 2) {
+        pointer += _read_nonexist(pointer, bs, r);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
 
     }
@@ -3500,25 +3003,15 @@ library BatchEntry {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_exist(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[3] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (ExistenceProof.Data memory x, uint256 sz) = _decode_ExistenceProof(p, bs);
-    if (isNil(r)) {
-      counters[1] += 1;
-    } else {
-      r.exist = x;
-      if (counters[1] > 0) counters[1] -= 1;
-    }
+    r.exist = x;
     return sz;
   }
 
@@ -3527,25 +3020,15 @@ library BatchEntry {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_nonexist(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[3] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (NonExistenceProof.Data memory x, uint256 sz) = _decode_NonExistenceProof(p, bs);
-    if (isNil(r)) {
-      counters[2] += 1;
-    } else {
-      r.nonexist = x;
-      if (counters[2] > 0) counters[2] -= 1;
-    }
+    r.nonexist = x;
     return sz;
   }
 
@@ -3655,10 +3138,10 @@ library BatchEntry {
     pure
     returns (uint)
   {
-    //
-    // First encoded `r` into a temporary array, and encode the actual size used.
-    // Then copy the temporary array into `bs`.
-    //
+    /**
+     * First encoded `r` into a temporary array, and encode the actual size used.
+     * Then copy the temporary array into `bs`.
+     */
     uint256 offset = p;
     uint256 pointer = p;
     bytes memory tmp = new bytes(_estimate(r));
@@ -3790,70 +3273,37 @@ library CompressedBatchProof {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_entries(pointer, bs, nil(), counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_lookup_inners(pointer, bs, nil(), counters);
-      }
-      
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+        pointer += _read_unpacked_repeated_entries(pointer, bs, nil(), counters);
+      } else
+      if (fieldId == 2) {
+        pointer += _read_unpacked_repeated_lookup_inners(pointer, bs, nil(), counters);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
 
     }
     pointer = offset;
-    r.entries = new CompressedBatchEntry.Data[](counters[1]);
-    r.lookup_inners = new InnerOp.Data[](counters[2]);
+    if (counters[1] > 0) {
+      require(r.entries.length == 0);
+      r.entries = new CompressedBatchEntry.Data[](counters[1]);
+    }
+    if (counters[2] > 0) {
+      require(r.lookup_inners.length == 0);
+      r.lookup_inners = new InnerOp.Data[](counters[2]);
+    }
 
     while (pointer < offset + sz) {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_entries(pointer, bs, r, counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_lookup_inners(pointer, bs, r, counters);
-      }
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+        pointer += _read_unpacked_repeated_entries(pointer, bs, r, counters);
+      } else
+      if (fieldId == 2) {
+        pointer += _read_unpacked_repeated_lookup_inners(pointer, bs, r, counters);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
     }
     return (r, sz);
@@ -3869,7 +3319,7 @@ library CompressedBatchProof {
    * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
-  function _read_entries(
+  function _read_unpacked_repeated_entries(
     uint256 p,
     bytes memory bs,
     Data memory r,
@@ -3883,7 +3333,7 @@ library CompressedBatchProof {
       counters[1] += 1;
     } else {
       r.entries[r.entries.length - counters[1]] = x;
-      if (counters[1] > 0) counters[1] -= 1;
+      counters[1] -= 1;
     }
     return sz;
   }
@@ -3896,7 +3346,7 @@ library CompressedBatchProof {
    * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
-  function _read_lookup_inners(
+  function _read_unpacked_repeated_lookup_inners(
     uint256 p,
     bytes memory bs,
     Data memory r,
@@ -3910,7 +3360,7 @@ library CompressedBatchProof {
       counters[2] += 1;
     } else {
       r.lookup_inners[r.lookup_inners.length - counters[2]] = x;
-      if (counters[2] > 0) counters[2] -= 1;
+      counters[2] -= 1;
     }
     return sz;
   }
@@ -4025,10 +3475,10 @@ library CompressedBatchProof {
     pure
     returns (uint)
   {
-    //
-    // First encoded `r` into a temporary array, and encode the actual size used.
-    // Then copy the temporary array into `bs`.
-    //
+    /**
+     * First encoded `r` into a temporary array, and encode the actual size used.
+     * Then copy the temporary array into `bs`.
+     */
     uint256 offset = p;
     uint256 pointer = p;
     bytes memory tmp = new bytes(_estimate(r));
@@ -4206,7 +3656,6 @@ library CompressedBatchEntry {
     returns (Data memory, uint)
   {
     Data memory r;
-    uint[3] memory counters;
     uint256 fieldId;
     ProtoBufRuntime.WireType wireType;
     uint256 bytesRead;
@@ -4216,33 +3665,13 @@ library CompressedBatchEntry {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_exist(pointer, bs, r, counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_nonexist(pointer, bs, r, counters);
-      }
-      
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+        pointer += _read_exist(pointer, bs, r);
+      } else
+      if (fieldId == 2) {
+        pointer += _read_nonexist(pointer, bs, r);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
 
     }
@@ -4256,25 +3685,15 @@ library CompressedBatchEntry {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_exist(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[3] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (CompressedExistenceProof.Data memory x, uint256 sz) = _decode_CompressedExistenceProof(p, bs);
-    if (isNil(r)) {
-      counters[1] += 1;
-    } else {
-      r.exist = x;
-      if (counters[1] > 0) counters[1] -= 1;
-    }
+    r.exist = x;
     return sz;
   }
 
@@ -4283,25 +3702,15 @@ library CompressedBatchEntry {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_nonexist(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[3] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (CompressedNonExistenceProof.Data memory x, uint256 sz) = _decode_CompressedNonExistenceProof(p, bs);
-    if (isNil(r)) {
-      counters[2] += 1;
-    } else {
-      r.nonexist = x;
-      if (counters[2] > 0) counters[2] -= 1;
-    }
+    r.nonexist = x;
     return sz;
   }
 
@@ -4411,10 +3820,10 @@ library CompressedBatchEntry {
     pure
     returns (uint)
   {
-    //
-    // First encoded `r` into a temporary array, and encode the actual size used.
-    // Then copy the temporary array into `bs`.
-    //
+    /**
+     * First encoded `r` into a temporary array, and encode the actual size used.
+     * Then copy the temporary array into `bs`.
+     */
     uint256 offset = p;
     uint256 pointer = p;
     bytes memory tmp = new bytes(_estimate(r));
@@ -4548,81 +3957,40 @@ library CompressedExistenceProof {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_key(pointer, bs, r, counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_value(pointer, bs, r, counters);
-      }
-      else if (fieldId == 3) {
-        pointer += _read_leaf(pointer, bs, r, counters);
-      }
-      else if (fieldId == 4) {
-        pointer += _read_path(pointer, bs, nil(), counters);
-      }
-      
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
+        pointer += _read_key(pointer, bs, r);
+      } else
+      if (fieldId == 2) {
+        pointer += _read_value(pointer, bs, r);
+      } else
+      if (fieldId == 3) {
+        pointer += _read_leaf(pointer, bs, r);
+      } else
+      if (fieldId == 4) {
         if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
+          pointer += _read_packed_repeated_path(pointer, bs, r);
+        } else {
+          pointer += _read_unpacked_repeated_path(pointer, bs, nil(), counters);
         }
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
 
     }
     pointer = offset;
-    r.path = new int32[](counters[4]);
+    if (counters[4] > 0) {
+      require(r.path.length == 0);
+      r.path = new int32[](counters[4]);
+    }
 
     while (pointer < offset + sz) {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
-      if (fieldId == 1) {
-        pointer += _read_key(pointer, bs, nil(), counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_value(pointer, bs, nil(), counters);
-      }
-      else if (fieldId == 3) {
-        pointer += _read_leaf(pointer, bs, nil(), counters);
-      }
-      else if (fieldId == 4) {
-        pointer += _read_path(pointer, bs, r, counters);
-      }
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+      if (fieldId == 4 && wireType != ProtoBufRuntime.WireType.LengthDelim) {
+        pointer += _read_unpacked_repeated_path(pointer, bs, r, counters);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
     }
     return (r, sz);
@@ -4635,25 +4003,15 @@ library CompressedExistenceProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_key(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[5] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
-    if (isNil(r)) {
-      counters[1] += 1;
-    } else {
-      r.key = x;
-      if (counters[1] > 0) counters[1] -= 1;
-    }
+    r.key = x;
     return sz;
   }
 
@@ -4662,25 +4020,15 @@ library CompressedExistenceProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_value(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[5] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
-    if (isNil(r)) {
-      counters[2] += 1;
-    } else {
-      r.value = x;
-      if (counters[2] > 0) counters[2] -= 1;
-    }
+    r.value = x;
     return sz;
   }
 
@@ -4689,25 +4037,15 @@ library CompressedExistenceProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_leaf(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[5] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (LeafOp.Data memory x, uint256 sz) = _decode_LeafOp(p, bs);
-    if (isNil(r)) {
-      counters[3] += 1;
-    } else {
-      r.leaf = x;
-      if (counters[3] > 0) counters[3] -= 1;
-    }
+    r.leaf = x;
     return sz;
   }
 
@@ -4719,7 +4057,7 @@ library CompressedExistenceProof {
    * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
-  function _read_path(
+  function _read_unpacked_repeated_path(
     uint256 p,
     bytes memory bs,
     Data memory r,
@@ -4733,9 +4071,33 @@ library CompressedExistenceProof {
       counters[4] += 1;
     } else {
       r.path[r.path.length - counters[4]] = x;
-      if (counters[4] > 0) counters[4] -= 1;
+      counters[4] -= 1;
     }
     return sz;
+  }
+
+  /**
+   * @dev The decoder for reading a field
+   * @param p The offset of bytes array to start decode
+   * @param bs The bytes array to be decoded
+   * @param r The in-memory struct
+   * @return The number of bytes decoded
+   */
+  function _read_packed_repeated_path(
+    uint256 p,
+    bytes memory bs,
+    Data memory r
+  ) internal pure returns (uint) {
+    (uint256 len, uint256 size) = ProtoBufRuntime._decode_varint(p, bs);
+    p += size;
+    uint256 count = ProtoBufRuntime._count_packed_repeated_varint(p, len, bs);
+    r.path = new int32[](count);
+    for (uint256 i = 0; i < count; i++) {
+      (int32 x, uint256 sz) = ProtoBufRuntime._decode_int32(p, bs);
+      p += sz;
+      r.path[i] = x;
+    }
+    return size + len;
   }
 
   // struct decoder
@@ -4819,13 +4181,18 @@ library CompressedExistenceProof {
     pointer += LeafOp._encode_nested(r.leaf, pointer, bs);
     
     if (r.path.length != 0) {
+    pointer += ProtoBufRuntime._encode_key(
+      4,
+      ProtoBufRuntime.WireType.LengthDelim,
+      pointer,
+      bs
+    );
+    pointer += ProtoBufRuntime._encode_varint(
+      ProtoBufRuntime._estimate_packed_repeated_int32(r.path),
+      pointer,
+      bs
+    );
     for(i = 0; i < r.path.length; i++) {
-      pointer += ProtoBufRuntime._encode_key(
-        4,
-        ProtoBufRuntime.WireType.Varint,
-        pointer,
-        bs)
-      ;
       pointer += ProtoBufRuntime._encode_int32(r.path[i], pointer, bs);
     }
     }
@@ -4845,10 +4212,10 @@ library CompressedExistenceProof {
     pure
     returns (uint)
   {
-    //
-    // First encoded `r` into a temporary array, and encode the actual size used.
-    // Then copy the temporary array into `bs`.
-    //
+    /**
+     * First encoded `r` into a temporary array, and encode the actual size used.
+     * Then copy the temporary array into `bs`.
+     */
     uint256 offset = p;
     uint256 pointer = p;
     bytes memory tmp = new bytes(_estimate(r));
@@ -4875,9 +4242,7 @@ library CompressedExistenceProof {
     e += 1 + ProtoBufRuntime._sz_lendelim(r.key.length);
     e += 1 + ProtoBufRuntime._sz_lendelim(r.value.length);
     e += 1 + ProtoBufRuntime._sz_lendelim(LeafOp._estimate(r.leaf));
-    for(i = 0; i < r.path.length; i++) {
-      e += 1 + ProtoBufRuntime._sz_int32(r.path[i]);
-    }
+    e += 1 + ProtoBufRuntime._sz_lendelim(ProtoBufRuntime._estimate_packed_repeated_int32(r.path));
     return e;
   }
   // empty checker
@@ -5007,7 +4372,6 @@ library CompressedNonExistenceProof {
     returns (Data memory, uint)
   {
     Data memory r;
-    uint[4] memory counters;
     uint256 fieldId;
     ProtoBufRuntime.WireType wireType;
     uint256 bytesRead;
@@ -5017,36 +4381,16 @@ library CompressedNonExistenceProof {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
-        pointer += _read_key(pointer, bs, r, counters);
-      }
-      else if (fieldId == 2) {
-        pointer += _read_left(pointer, bs, r, counters);
-      }
-      else if (fieldId == 3) {
-        pointer += _read_right(pointer, bs, r, counters);
-      }
-      
-      else {
-        if (wireType == ProtoBufRuntime.WireType.Fixed64) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed64(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Fixed32) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_fixed32(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.Varint) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_varint(pointer, bs);
-          pointer += size;
-        }
-        if (wireType == ProtoBufRuntime.WireType.LengthDelim) {
-          uint256 size;
-          (, size) = ProtoBufRuntime._decode_lendelim(pointer, bs);
-          pointer += size;
-        }
+        pointer += _read_key(pointer, bs, r);
+      } else
+      if (fieldId == 2) {
+        pointer += _read_left(pointer, bs, r);
+      } else
+      if (fieldId == 3) {
+        pointer += _read_right(pointer, bs, r);
+      } else
+      {
+        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
 
     }
@@ -5060,25 +4404,15 @@ library CompressedNonExistenceProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_key(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[4] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
-    if (isNil(r)) {
-      counters[1] += 1;
-    } else {
-      r.key = x;
-      if (counters[1] > 0) counters[1] -= 1;
-    }
+    r.key = x;
     return sz;
   }
 
@@ -5087,25 +4421,15 @@ library CompressedNonExistenceProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_left(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[4] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (CompressedExistenceProof.Data memory x, uint256 sz) = _decode_CompressedExistenceProof(p, bs);
-    if (isNil(r)) {
-      counters[2] += 1;
-    } else {
-      r.left = x;
-      if (counters[2] > 0) counters[2] -= 1;
-    }
+    r.left = x;
     return sz;
   }
 
@@ -5114,25 +4438,15 @@ library CompressedNonExistenceProof {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
   function _read_right(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[4] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (CompressedExistenceProof.Data memory x, uint256 sz) = _decode_CompressedExistenceProof(p, bs);
-    if (isNil(r)) {
-      counters[3] += 1;
-    } else {
-      r.right = x;
-      if (counters[3] > 0) counters[3] -= 1;
-    }
+    r.right = x;
     return sz;
   }
 
@@ -5232,10 +4546,10 @@ library CompressedNonExistenceProof {
     pure
     returns (uint)
   {
-    //
-    // First encoded `r` into a temporary array, and encode the actual size used.
-    // Then copy the temporary array into `bs`.
-    //
+    /**
+     * First encoded `r` into a temporary array, and encode the actual size used.
+     * Then copy the temporary array into `bs`.
+     */
     uint256 offset = p;
     uint256 pointer = p;
     bytes memory tmp = new bytes(_estimate(r));
@@ -5400,6 +4714,20 @@ library PROOFS_PROTO_GLOBAL_ENUMS {
   }
 
 
+  /**
+   * @dev The estimator for an packed enum array
+   * @return The number of bytes encoded
+   */
+  function estimate_packed_repeated_HashOp(
+    HashOp[] memory a
+  ) internal pure returns (uint256) {
+    uint256 e = 0;
+    for (uint i = 0; i < a.length; i++) {
+      e += ProtoBufRuntime._sz_enum(encode_HashOp(a[i]));
+    }
+    return e;
+  }
+
   // Solidity enum definitions
   enum LengthOp {
     NO_PREFIX,
@@ -5497,5 +4825,19 @@ library PROOFS_PROTO_GLOBAL_ENUMS {
     revert();
   }
 
+
+  /**
+   * @dev The estimator for an packed enum array
+   * @return The number of bytes encoded
+   */
+  function estimate_packed_repeated_LengthOp(
+    LengthOp[] memory a
+  ) internal pure returns (uint256) {
+    uint256 e = 0;
+    for (uint i = 0; i < a.length; i++) {
+      e += ProtoBufRuntime._sz_enum(encode_LengthOp(a[i]));
+    }
+    return e;
+  }
 }
 //library PROOFS_PROTO_GLOBAL_ENUMS
