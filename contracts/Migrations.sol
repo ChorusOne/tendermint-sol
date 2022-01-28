@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: TBD
-pragma solidity >=0.4.25 <=0.8.2;
+pragma solidity >=0.4.25 <0.9.0;
 
 contract Migrations {
   address public owner;

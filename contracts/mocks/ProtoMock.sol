@@ -3,7 +3,7 @@
 pragma solidity ^0.8.2;
 
 import {TmHeader} from "../proto/TendermintLight.sol";
-import {GoogleProtobufAny as Any} from "../proto/GoogleProtobufAny.sol";
+import {GoogleProtobufAny as Any} from "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/GoogleProtobufAny.sol";
 
 contract ProtoMock {
 

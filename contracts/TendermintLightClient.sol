@@ -17,11 +17,11 @@ import {
     InnerOp
 } from "./proto/proofs.sol";
 import "./proto/TendermintHelper.sol";
-import {GoogleProtobufAny as Any} from "./proto/GoogleProtobufAny.sol";
-import "./ibc/IClient.sol";
-import "./ibc/IBCHost.sol";
-import "./ibc/IBCMsgs.sol";
-import "./ibc/IBCIdentifier.sol";
+import {GoogleProtobufAny as Any} from "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/GoogleProtobufAny.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/IClient.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/IBCHost.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/IBCMsgs.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/IBCIdentifier.sol";
 import "./utils/Bytes.sol";
 import "./utils/Tendermint.sol";
 import "./ics23/ics23.sol";
