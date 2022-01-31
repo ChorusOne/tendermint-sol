@@ -2,6 +2,7 @@
 pragma solidity ^0.8.9;
 import "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/ProtoBufRuntime.sol";
 import "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/GoogleProtobufAny.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/Client.sol";
 
 library Fraction {
 
@@ -787,8 +788,8 @@ library ClientState {
     Duration.Data trusting_period;
     Duration.Data unbonding_period;
     Duration.Data max_clock_drift;
-    int64 frozen_height;
-    int64 latest_height;
+    Height.Data frozen_height;
+    Height.Data latest_height;
     bool allow_update_after_expiry;
     bool allow_update_after_misbehaviour;
   }
@@ -972,7 +973,7 @@ library ClientState {
     bytes memory bs,
     Data memory r
   ) internal pure returns (uint) {
-    (int64 x, uint256 sz) = ProtoBufRuntime._decode_int64(p, bs);
+    (Height.Data memory x, uint256 sz) = _decode_Height(p, bs);
     r.frozen_height = x;
     return sz;
   }
@@ -989,7 +990,7 @@ library ClientState {
     bytes memory bs,
     Data memory r
   ) internal pure returns (uint) {
-    (int64 x, uint256 sz) = ProtoBufRuntime._decode_int64(p, bs);
+    (Height.Data memory x, uint256 sz) = _decode_Height(p, bs);
     r.latest_height = x;
     return sz;
   }
@@ -1064,6 +1065,25 @@ library ClientState {
     (uint256 sz, uint256 bytesRead) = ProtoBufRuntime._decode_varint(pointer, bs);
     pointer += bytesRead;
     (Duration.Data memory r, ) = Duration._decode(pointer, bs, sz);
+    return (r, sz + bytesRead);
+  }
+
+  /**
+   * @dev The decoder for reading a inner struct field
+   * @param p The offset of bytes array to start decode
+   * @param bs The bytes array to be decoded
+   * @return The decoded inner-struct
+   * @return The number of bytes used to decode
+   */
+  function _decode_Height(uint256 p, bytes memory bs)
+    internal
+    pure
+    returns (Height.Data memory, uint)
+  {
+    uint256 pointer = p;
+    (uint256 sz, uint256 bytesRead) = ProtoBufRuntime._decode_varint(pointer, bs);
+    pointer += bytesRead;
+    (Height.Data memory r, ) = Height._decode(pointer, bs, sz);
     return (r, sz + bytesRead);
   }
 
@@ -1145,24 +1165,24 @@ library ClientState {
     );
     pointer += Duration._encode_nested(r.max_clock_drift, pointer, bs);
     
-    if (r.frozen_height != 0) {
+    
     pointer += ProtoBufRuntime._encode_key(
       6,
-      ProtoBufRuntime.WireType.Varint,
+      ProtoBufRuntime.WireType.LengthDelim,
       pointer,
       bs
     );
-    pointer += ProtoBufRuntime._encode_int64(r.frozen_height, pointer, bs);
-    }
-    if (r.latest_height != 0) {
+    pointer += Height._encode_nested(r.frozen_height, pointer, bs);
+    
+    
     pointer += ProtoBufRuntime._encode_key(
       7,
-      ProtoBufRuntime.WireType.Varint,
+      ProtoBufRuntime.WireType.LengthDelim,
       pointer,
       bs
     );
-    pointer += ProtoBufRuntime._encode_int64(r.latest_height, pointer, bs);
-    }
+    pointer += Height._encode_nested(r.latest_height, pointer, bs);
+    
     if (r.allow_update_after_expiry != false) {
     pointer += ProtoBufRuntime._encode_key(
       8,
@@ -1229,8 +1249,8 @@ library ClientState {
     e += 1 + ProtoBufRuntime._sz_lendelim(Duration._estimate(r.trusting_period));
     e += 1 + ProtoBufRuntime._sz_lendelim(Duration._estimate(r.unbonding_period));
     e += 1 + ProtoBufRuntime._sz_lendelim(Duration._estimate(r.max_clock_drift));
-    e += 1 + ProtoBufRuntime._sz_int64(r.frozen_height);
-    e += 1 + ProtoBufRuntime._sz_int64(r.latest_height);
+    e += 1 + ProtoBufRuntime._sz_lendelim(Height._estimate(r.frozen_height));
+    e += 1 + ProtoBufRuntime._sz_lendelim(Height._estimate(r.latest_height));
     e += 1 + 1;
     e += 1 + 1;
     return e;
@@ -1242,14 +1262,6 @@ library ClientState {
   ) internal pure returns (bool) {
     
   if (bytes(r.chain_id).length != 0) {
-    return false;
-  }
-
-  if (r.frozen_height != 0) {
-    return false;
-  }
-
-  if (r.latest_height != 0) {
     return false;
   }
 
@@ -1277,8 +1289,8 @@ library ClientState {
     Duration.store(input.trusting_period, output.trusting_period);
     Duration.store(input.unbonding_period, output.unbonding_period);
     Duration.store(input.max_clock_drift, output.max_clock_drift);
-    output.frozen_height = input.frozen_height;
-    output.latest_height = input.latest_height;
+    Height.store(input.frozen_height, output.frozen_height);
+    Height.store(input.latest_height, output.latest_height);
     output.allow_update_after_expiry = input.allow_update_after_expiry;
     output.allow_update_after_misbehaviour = input.allow_update_after_misbehaviour;
 
@@ -2158,7 +2170,7 @@ library CanonicalVote {
   //struct definition
   struct Data {
     TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.SignedMsgType Type;
-    int64 height;
+    Height.Data height;
     int64 round;
     CanonicalBlockID.Data block_id;
     Timestamp.Data timestamp;
@@ -2268,7 +2280,7 @@ library CanonicalVote {
     bytes memory bs,
     Data memory r
   ) internal pure returns (uint) {
-    (int64 x, uint256 sz) = ProtoBufRuntime._decode_sfixed64(p, bs);
+    (Height.Data memory x, uint256 sz) = _decode_Height(p, bs);
     r.height = x;
     return sz;
   }
@@ -2342,6 +2354,25 @@ library CanonicalVote {
   }
 
   // struct decoder
+  /**
+   * @dev The decoder for reading a inner struct field
+   * @param p The offset of bytes array to start decode
+   * @param bs The bytes array to be decoded
+   * @return The decoded inner-struct
+   * @return The number of bytes used to decode
+   */
+  function _decode_Height(uint256 p, bytes memory bs)
+    internal
+    pure
+    returns (Height.Data memory, uint)
+  {
+    uint256 pointer = p;
+    (uint256 sz, uint256 bytesRead) = ProtoBufRuntime._decode_varint(pointer, bs);
+    pointer += bytesRead;
+    (Height.Data memory r, ) = Height._decode(pointer, bs, sz);
+    return (r, sz + bytesRead);
+  }
+
   /**
    * @dev The decoder for reading a inner struct field
    * @param p The offset of bytes array to start decode
@@ -2423,15 +2454,15 @@ library CanonicalVote {
     int32 _enum_Type = TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.encode_SignedMsgType(r.Type);
     pointer += ProtoBufRuntime._encode_enum(_enum_Type, pointer, bs);
     }
-    if (r.height != 0) {
+    
     pointer += ProtoBufRuntime._encode_key(
       2,
-      ProtoBufRuntime.WireType.Fixed64,
+      ProtoBufRuntime.WireType.LengthDelim,
       pointer,
       bs
     );
-    pointer += ProtoBufRuntime._encode_sfixed64(r.height, pointer, bs);
-    }
+    pointer += Height._encode_nested(r.height, pointer, bs);
+    
     if (r.round != 0) {
     pointer += ProtoBufRuntime._encode_key(
       3,
@@ -2512,7 +2543,7 @@ library CanonicalVote {
   ) internal pure returns (uint) {
     uint256 e;
     e += 1 + ProtoBufRuntime._sz_enum(TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS.encode_SignedMsgType(r.Type));
-    e += 1 + 8;
+    e += 1 + ProtoBufRuntime._sz_lendelim(Height._estimate(r.height));
     e += 1 + 8;
     e += 1 + ProtoBufRuntime._sz_lendelim(CanonicalBlockID._estimate(r.block_id));
     e += 1 + ProtoBufRuntime._sz_lendelim(Timestamp._estimate(r.timestamp));
@@ -2526,10 +2557,6 @@ library CanonicalVote {
   ) internal pure returns (bool) {
     
   if (uint(r.Type) != 0) {
-    return false;
-  }
-
-  if (r.height != 0) {
     return false;
   }
 
@@ -2553,7 +2580,7 @@ library CanonicalVote {
    */
   function store(Data memory input, Data storage output) internal {
     output.Type = input.Type;
-    output.height = input.height;
+    Height.store(input.height, output.height);
     output.round = input.round;
     CanonicalBlockID.store(input.block_id, output.block_id);
     Timestamp.store(input.timestamp, output.timestamp);
@@ -3181,7 +3208,7 @@ library Commit {
 
   //struct definition
   struct Data {
-    int64 height;
+    Height.Data height;
     int32 round;
     CanonicalBlockID.Data block_id;
     CommitSig.Data[] signatures;
@@ -3283,7 +3310,7 @@ library Commit {
     bytes memory bs,
     Data memory r
   ) internal pure returns (uint) {
-    (int64 x, uint256 sz) = ProtoBufRuntime._decode_int64(p, bs);
+    (Height.Data memory x, uint256 sz) = _decode_Height(p, bs);
     r.height = x;
     return sz;
   }
@@ -3357,6 +3384,25 @@ library Commit {
    * @return The decoded inner-struct
    * @return The number of bytes used to decode
    */
+  function _decode_Height(uint256 p, bytes memory bs)
+    internal
+    pure
+    returns (Height.Data memory, uint)
+  {
+    uint256 pointer = p;
+    (uint256 sz, uint256 bytesRead) = ProtoBufRuntime._decode_varint(pointer, bs);
+    pointer += bytesRead;
+    (Height.Data memory r, ) = Height._decode(pointer, bs, sz);
+    return (r, sz + bytesRead);
+  }
+
+  /**
+   * @dev The decoder for reading a inner struct field
+   * @param p The offset of bytes array to start decode
+   * @param bs The bytes array to be decoded
+   * @return The decoded inner-struct
+   * @return The number of bytes used to decode
+   */
   function _decode_CanonicalBlockID(uint256 p, bytes memory bs)
     internal
     pure
@@ -3421,15 +3467,15 @@ library Commit {
     uint256 offset = p;
     uint256 pointer = p;
     uint256 i;
-    if (r.height != 0) {
+    
     pointer += ProtoBufRuntime._encode_key(
       1,
-      ProtoBufRuntime.WireType.Varint,
+      ProtoBufRuntime.WireType.LengthDelim,
       pointer,
       bs
     );
-    pointer += ProtoBufRuntime._encode_int64(r.height, pointer, bs);
-    }
+    pointer += Height._encode_nested(r.height, pointer, bs);
+    
     if (r.round != 0) {
     pointer += ProtoBufRuntime._encode_key(
       2,
@@ -3502,7 +3548,7 @@ library Commit {
     Data memory r
   ) internal pure returns (uint) {
     uint256 e;uint256 i;
-    e += 1 + ProtoBufRuntime._sz_int64(r.height);
+    e += 1 + ProtoBufRuntime._sz_lendelim(Height._estimate(r.height));
     e += 1 + ProtoBufRuntime._sz_int32(r.round);
     e += 1 + ProtoBufRuntime._sz_lendelim(CanonicalBlockID._estimate(r.block_id));
     for(i = 0; i < r.signatures.length; i++) {
@@ -3516,10 +3562,6 @@ library Commit {
     Data memory r
   ) internal pure returns (bool) {
     
-  if (r.height != 0) {
-    return false;
-  }
-
   if (r.round != 0) {
     return false;
   }
@@ -3539,7 +3581,7 @@ library Commit {
    * @param output The in-storage struct
    */
   function store(Data memory input, Data storage output) internal {
-    output.height = input.height;
+    Height.store(input.height, output.height);
     output.round = input.round;
     CanonicalBlockID.store(input.block_id, output.block_id);
 
@@ -4207,7 +4249,7 @@ library LightHeader {
   struct Data {
     Consensus.Data version;
     string chain_id;
-    int64 height;
+    Height.Data height;
     Timestamp.Data time;
     CanonicalBlockID.Data last_block_id;
     bytes last_commit_hash;
@@ -4364,7 +4406,7 @@ library LightHeader {
     bytes memory bs,
     Data memory r
   ) internal pure returns (uint) {
-    (int64 x, uint256 sz) = ProtoBufRuntime._decode_int64(p, bs);
+    (Height.Data memory x, uint256 sz) = _decode_Height(p, bs);
     r.height = x;
     return sz;
   }
@@ -4583,6 +4625,25 @@ library LightHeader {
    * @return The decoded inner-struct
    * @return The number of bytes used to decode
    */
+  function _decode_Height(uint256 p, bytes memory bs)
+    internal
+    pure
+    returns (Height.Data memory, uint)
+  {
+    uint256 pointer = p;
+    (uint256 sz, uint256 bytesRead) = ProtoBufRuntime._decode_varint(pointer, bs);
+    pointer += bytesRead;
+    (Height.Data memory r, ) = Height._decode(pointer, bs, sz);
+    return (r, sz + bytesRead);
+  }
+
+  /**
+   * @dev The decoder for reading a inner struct field
+   * @param p The offset of bytes array to start decode
+   * @param bs The bytes array to be decoded
+   * @return The decoded inner-struct
+   * @return The number of bytes used to decode
+   */
   function _decode_Timestamp(uint256 p, bytes memory bs)
     internal
     pure
@@ -4665,15 +4726,15 @@ library LightHeader {
     );
     pointer += ProtoBufRuntime._encode_string(r.chain_id, pointer, bs);
     }
-    if (r.height != 0) {
+    
     pointer += ProtoBufRuntime._encode_key(
       3,
-      ProtoBufRuntime.WireType.Varint,
+      ProtoBufRuntime.WireType.LengthDelim,
       pointer,
       bs
     );
-    pointer += ProtoBufRuntime._encode_int64(r.height, pointer, bs);
-    }
+    pointer += Height._encode_nested(r.height, pointer, bs);
+    
     
     pointer += ProtoBufRuntime._encode_key(
       4,
@@ -4818,7 +4879,7 @@ library LightHeader {
     uint256 e;
     e += 1 + ProtoBufRuntime._sz_lendelim(Consensus._estimate(r.version));
     e += 1 + ProtoBufRuntime._sz_lendelim(bytes(r.chain_id).length);
-    e += 1 + ProtoBufRuntime._sz_int64(r.height);
+    e += 1 + ProtoBufRuntime._sz_lendelim(Height._estimate(r.height));
     e += 1 + ProtoBufRuntime._sz_lendelim(Timestamp._estimate(r.time));
     e += 1 + ProtoBufRuntime._sz_lendelim(CanonicalBlockID._estimate(r.last_block_id));
     e += 1 + ProtoBufRuntime._sz_lendelim(r.last_commit_hash.length);
@@ -4839,10 +4900,6 @@ library LightHeader {
   ) internal pure returns (bool) {
     
   if (bytes(r.chain_id).length != 0) {
-    return false;
-  }
-
-  if (r.height != 0) {
     return false;
   }
 
@@ -4895,7 +4952,7 @@ library LightHeader {
   function store(Data memory input, Data storage output) internal {
     Consensus.store(input.version, output.version);
     output.chain_id = input.chain_id;
-    output.height = input.height;
+    Height.store(input.height, output.height);
     Timestamp.store(input.time, output.time);
     CanonicalBlockID.store(input.last_block_id, output.last_block_id);
     output.last_commit_hash = input.last_commit_hash;
@@ -5232,7 +5289,7 @@ library TmHeader {
   struct Data {
     SignedHeader.Data signed_header;
     ValidatorSet.Data validator_set;
-    int64 trusted_height;
+    Height.Data trusted_height;
     ValidatorSet.Data trusted_validators;
   }
 
@@ -5349,7 +5406,7 @@ library TmHeader {
     bytes memory bs,
     Data memory r
   ) internal pure returns (uint) {
-    (int64 x, uint256 sz) = ProtoBufRuntime._decode_int64(p, bs);
+    (Height.Data memory x, uint256 sz) = _decode_Height(p, bs);
     r.trusted_height = x;
     return sz;
   }
@@ -5410,6 +5467,25 @@ library TmHeader {
     return (r, sz + bytesRead);
   }
 
+  /**
+   * @dev The decoder for reading a inner struct field
+   * @param p The offset of bytes array to start decode
+   * @param bs The bytes array to be decoded
+   * @return The decoded inner-struct
+   * @return The number of bytes used to decode
+   */
+  function _decode_Height(uint256 p, bytes memory bs)
+    internal
+    pure
+    returns (Height.Data memory, uint)
+  {
+    uint256 pointer = p;
+    (uint256 sz, uint256 bytesRead) = ProtoBufRuntime._decode_varint(pointer, bs);
+    pointer += bytesRead;
+    (Height.Data memory r, ) = Height._decode(pointer, bs, sz);
+    return (r, sz + bytesRead);
+  }
+
 
   // Encoder section
 
@@ -5461,15 +5537,15 @@ library TmHeader {
     );
     pointer += ValidatorSet._encode_nested(r.validator_set, pointer, bs);
     
-    if (r.trusted_height != 0) {
+    
     pointer += ProtoBufRuntime._encode_key(
       3,
-      ProtoBufRuntime.WireType.Varint,
+      ProtoBufRuntime.WireType.LengthDelim,
       pointer,
       bs
     );
-    pointer += ProtoBufRuntime._encode_int64(r.trusted_height, pointer, bs);
-    }
+    pointer += Height._encode_nested(r.trusted_height, pointer, bs);
+    
     
     pointer += ProtoBufRuntime._encode_key(
       4,
@@ -5524,7 +5600,7 @@ library TmHeader {
     uint256 e;
     e += 1 + ProtoBufRuntime._sz_lendelim(SignedHeader._estimate(r.signed_header));
     e += 1 + ProtoBufRuntime._sz_lendelim(ValidatorSet._estimate(r.validator_set));
-    e += 1 + ProtoBufRuntime._sz_int64(r.trusted_height);
+    e += 1 + ProtoBufRuntime._sz_lendelim(Height._estimate(r.trusted_height));
     e += 1 + ProtoBufRuntime._sz_lendelim(ValidatorSet._estimate(r.trusted_validators));
     return e;
   }
@@ -5534,10 +5610,6 @@ library TmHeader {
     Data memory r
   ) internal pure returns (bool) {
     
-  if (r.trusted_height != 0) {
-    return false;
-  }
-
     return true;
   }
 
@@ -5551,7 +5623,7 @@ library TmHeader {
   function store(Data memory input, Data storage output) internal {
     SignedHeader.store(input.signed_header, output.signed_header);
     ValidatorSet.store(input.validator_set, output.validator_set);
-    output.trusted_height = input.trusted_height;
+    Height.store(input.trusted_height, output.trusted_height);
     ValidatorSet.store(input.trusted_validators, output.trusted_validators);
 
   }

@@ -3,6 +3,7 @@
 pragma solidity ^0.8.2;
 
 import {TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS, Validator, CanonicalBlockID, CanonicalVote, TmHeader, ConsensusState, Commit, CommitSig, SignedHeader, ValidatorSet, Duration, Timestamp, Consensus} from "./TendermintLight.sol";
+import {Height} from "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/Client.sol";
 import "./Encoder.sol";
 import "../utils/Bytes.sol";
 import "../utils/crypto/MerkleTree.sol";
@@ -91,13 +92,14 @@ library TendermintHelper {
         require(h.header.validators_hash.length > 0, "Tendermint: hash can't be empty");
 
         bytes memory hbz = Consensus.encode(h.header.version);
+        bytes memory bzHeight = Height.encode(h.header.height);
         bytes memory pbt = Timestamp.encode(h.header.time);
         bytes memory bzbi = CanonicalBlockID.encode(h.header.last_block_id);
 
         bytes[14] memory all = [
             hbz,
             Encoder.cdcEncode(h.header.chain_id),
-            Encoder.cdcEncode(h.header.height),
+            bzHeight,
             pbt,
             bzbi,
             Encoder.cdcEncode(h.header.last_commit_hash),
