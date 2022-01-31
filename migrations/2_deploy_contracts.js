@@ -14,13 +14,13 @@ function deployMocks(deployer) {
 
 function deployLightClient(deployer) {
 	// contracts
-	const IBCHost = artifacts.require("IBCHost");
-	const IBCClient = artifacts.require("IBCClient");
-	const IBCConnection = artifacts.require("IBCConnection");
-	const IBCChannel = artifacts.require("IBCChannel");
-	const IBCHandler = artifacts.require("IBCHandler");
-	const IBCMsgs = artifacts.require("IBCMsgs");
-	const IBCIdentifier = artifacts.require("IBCIdentifier");
+	const IBCHost = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCHost");
+	const IBCClient = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCClient");
+	const IBCConnection = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCConnection");
+	const IBCChannel = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCChannel");
+	const IBCHandler = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCHandler");
+	const IBCMsgs = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCMsgs");
+	const IBCIdentifier = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCIdentifier");
 	const TendermintLightClient = artifacts.require("TendermintLightClient");
 
 	// libs
