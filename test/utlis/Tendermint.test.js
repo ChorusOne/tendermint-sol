@@ -1,11 +1,31 @@
 const TendermintMock = artifacts.require('TendermintMock')
 const protobuf = require('protobufjs')
 const lib = require('../lib.js')
+const fs = require('fs')
+const path = require('path')
+
+const protoIncludes = [
+  './node_modules/protobufjs',
+  './node_modules/@hyperledger-labs/yui-ibc-solidity/proto',
+  './node_modules/@hyperledger-labs/yui-ibc-solidity/third_party/proto',
+  `${process.env.SOLPB_DIR}/protobuf-solidity/src/protoc/include`,
+];
 
 contract('TendermintMock', () => {
   it('verifies signed header hash', async () => {
     const mock = await TendermintMock.deployed()
     const root = new protobuf.Root()
+    root.resolvePath = (origin, target) => {
+      for (d of protoIncludes) {
+        p = path.join(d, target)
+        if (fs.existsSync(p)) {
+          console.log(`found: ${p}`);
+          return p;
+        }
+      }
+      console.log(`fallback: ${target}`);
+      return protobuf.util.path.resolve(origin, target);
+    }
 
     await root.load('./proto/TendermintLight.proto', { keepCase: true }).then(async function (root, err) {
       if (err) { throw err }
@@ -25,6 +45,17 @@ contract('TendermintMock', () => {
   it('verifies total voting power', async () => {
     const mock = await TendermintMock.deployed()
     const root = new protobuf.Root()
+    root.resolvePath = (origin, target) => {
+      for (d of protoIncludes) {
+        p = path.join(d, target)
+        if (fs.existsSync(p)) {
+          console.log(`found: ${p}`);
+          return p;
+        }
+      }
+      console.log(`fallback: ${target}`);
+      return protobuf.util.path.resolve(origin, target);
+    }
 
     await root.load('./proto/TendermintLight.proto', { keepCase: true }).then(async function (root, err) {
       if (err) { throw err }
@@ -42,6 +73,17 @@ contract('TendermintMock', () => {
   it('verifies filtering validator set by address', async () => {
       const mock = await TendermintMock.deployed()
       const root = new protobuf.Root()
+      root.resolvePath = (origin, target) => {
+        for (d of protoIncludes) {
+          p = path.join(d, target)
+          if (fs.existsSync(p)) {
+            console.log(`found: ${p}`);
+            return p;
+          }
+        }
+        console.log(`fallback: ${target}`);
+        return protobuf.util.path.resolve(origin, target);
+      }
 
       await root.load('./proto/TendermintLight.proto', { keepCase: true }).then(async function (root, err) {
           if (err) { throw err }
@@ -64,6 +106,17 @@ contract('TendermintMock', () => {
   it('verifies address derivation', async () => {
     const mock = await TendermintMock.deployed()
     const root = new protobuf.Root()
+    root.resolvePath = (origin, target) => {
+      for (d of protoIncludes) {
+        p = path.join(d, target)
+        if (fs.existsSync(p)) {
+          console.log(`found: ${p}`);
+          return p;
+        }
+      }
+      console.log(`fallback: ${target}`);
+      return protobuf.util.path.resolve(origin, target);
+    }
 
     await root.load('./proto/TendermintLight.proto', { keepCase: true }).then(async function (root, err) {
       if (err) { throw err }
@@ -81,6 +134,17 @@ contract('TendermintMock', () => {
   it('verifies validator set hash', async () => {
     const mock = await TendermintMock.deployed()
     const root = new protobuf.Root()
+    root.resolvePath = (origin, target) => {
+      for (d of protoIncludes) {
+        p = path.join(d, target)
+        if (fs.existsSync(p)) {
+          console.log(`found: ${p}`);
+          return p;
+        }
+      }
+      console.log(`fallback: ${target}`);
+      return protobuf.util.path.resolve(origin, target);
+    }
 
     await root.load('./proto/TendermintLight.proto', { keepCase: true }).then(async function (root, err) {
       if (err) { throw err }
