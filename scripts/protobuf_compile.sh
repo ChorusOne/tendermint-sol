@@ -26,7 +26,4 @@ do
 	--plugin=protoc-gen-sol=${SOLPB_DIR}/protobuf-solidity/src/protoc/plugin/gen_sol.py \
 	--sol_out="use_runtime=@hyperledger-labs/yui-ibc-solidity/contracts/core/types/ProtoBufRuntime.sol&solc_version=0.8.9&allow_reserved_keywords=on:$(pwd)/contracts/proto" \
         $TMP/$FNAME
-
-    SOLFNAME=`echo $FNAME | sed 's/.proto$/.sol/'`
-    sed -i 's#^import "./contracts/core/types/Client.sol";$#import "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/Client.sol";#' $(pwd)/contracts/proto/$SOLFNAME
 done
