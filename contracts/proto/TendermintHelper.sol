@@ -3,11 +3,11 @@
 pragma solidity ^0.8.2;
 
 import {TENDERMINTLIGHT_PROTO_GLOBAL_ENUMS, Validator, CanonicalBlockID, CanonicalVote, TmHeader, ConsensusState, Commit, CommitSig, SignedHeader, ValidatorSet, Duration, Timestamp, Consensus} from "./TendermintLight.sol";
-import {Height} from "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/Client.sol";
 import "./Encoder.sol";
 import "../utils/Bytes.sol";
 import "../utils/crypto/MerkleTree.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/Client.sol";
 
 library TendermintHelper {
     using Bytes for bytes;
@@ -92,14 +92,13 @@ library TendermintHelper {
         require(h.header.validators_hash.length > 0, "Tendermint: hash can't be empty");
 
         bytes memory hbz = Consensus.encode(h.header.version);
-        bytes memory bzHeight = Height.encode(h.header.height);
         bytes memory pbt = Timestamp.encode(h.header.time);
         bytes memory bzbi = CanonicalBlockID.encode(h.header.last_block_id);
 
         bytes[14] memory all = [
             hbz,
             Encoder.cdcEncode(h.header.chain_id),
-            bzHeight,
+            Encoder.cdcEncode(h.header.height),
             pbt,
             bzbi,
             Encoder.cdcEncode(h.header.last_commit_hash),
@@ -150,5 +149,9 @@ library TendermintHelper {
         }
 
         return vals.total_voting_power;
+    }
+
+    function getHeight(TmHeader.Data memory header) internal pure returns (Height.Data memory) {
+        return Height.Data(0, uint64(header.signed_header.header.height));
     }
 }

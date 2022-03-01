@@ -83,7 +83,7 @@ message CanonicalBlockID {
 
 message CanonicalVote {
   SignedMsgType type = 1;
-  Height height = 2;
+  sfixed64 height = 2;
   sfixed64 round = 3;
   CanonicalBlockID block_id = 4;
   Timestamp timestamp = 5;
@@ -101,7 +101,7 @@ message Validator {
 }
 
 message Commit {
-  Height height = 1;
+  int64 height = 1;
   int32 round = 2;
   CanonicalBlockID block_id = 3;
   repeated CommitSig signatures = 4;
@@ -131,7 +131,7 @@ message Timestamp {
 message LightHeader {
   Consensus version = 1;
   string chain_id = 2;
-  Height height = 3;
+  int64 height = 3;
   Timestamp time = 4;
   CanonicalBlockID last_block_id = 5;
   bytes last_commit_hash = 6;  // commit from validators from the last block

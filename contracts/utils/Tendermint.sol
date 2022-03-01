@@ -7,7 +7,6 @@ import "../proto/TendermintHelper.sol";
 import "../proto/Encoder.sol";
 import "./crypto/Ed25519.sol";
 import "./Bytes.sol";
-import "@hyperledger-labs/yui-ibc-solidity/contracts/core/IBCHeight.sol";
 
 library Tendermint {
     using Bytes for bytes;
@@ -16,7 +15,6 @@ library Tendermint {
     using TendermintHelper for Timestamp.Data;
     using TendermintHelper for CanonicalBlockID.Data;
     using TendermintHelper for Commit.Data;
-    using IBCHeight for Height.Data;
 
     function verify(
         Duration.Data memory trustingPeriod,
@@ -28,7 +26,7 @@ library Tendermint {
         ValidatorSet.Data memory untrustedVals,
         Duration.Data memory currentTime
     ) internal view returns (bool) {
-        if (!checkAdjacency(untrustedHeader.header.height, trustedHeader.header.height)) {
+        if (untrustedHeader.header.height != trustedHeader.header.height + 1) {
             return
                 verifyNonAdjacent(
                     trustedHeader,
@@ -54,7 +52,7 @@ library Tendermint {
         Duration.Data memory currentTime,
         Duration.Data memory maxClockDrift
     ) internal view returns (bool) {
-        require(checkAdjacency(untrustedHeader.header.height, trustedHeader.header.height), "headers must be adjacent in height");
+        require(untrustedHeader.header.height == trustedHeader.header.height + 1, "headers must be adjacent in height");
 
         require(!trustedHeader.isExpired(trustingPeriod, currentTime), "header can't be expired");
 
@@ -89,7 +87,7 @@ library Tendermint {
         Fraction.Data memory trustLevel
     ) internal view returns (bool) {
         require(
-            !checkAdjacency(untrustedHeader.header.height, trustedHeader.header.height),
+            untrustedHeader.header.height != trustedHeader.header.height + 1,
             "LC: headers must be non adjacent in height"
         );
 
@@ -132,7 +130,7 @@ library Tendermint {
                 keccak256(abi.encodePacked(trustedHeader.header.chain_id)),
             "header belongs to another chain"
         );
-        require(untrustedHeader.commit.height.eq(untrustedHeader.header.height), "header and commit height mismatch");
+        require(untrustedHeader.commit.height == untrustedHeader.header.height, "header and commit height mismatch");
 
         bytes32 untrustedHeaderBlockHash = untrustedHeader.hash();
         require(
@@ -141,7 +139,7 @@ library Tendermint {
         );
 
         require(
-            untrustedHeader.header.height.gt(trustedHeader.header.height),
+            untrustedHeader.header.height > trustedHeader.header.height,
             "expected new header height to be greater than one of old header"
         );
         require(
@@ -226,12 +224,12 @@ library Tendermint {
         ValidatorSet.Data memory vals,
         string memory chainID,
         CanonicalBlockID.Data memory blockID,
-        Height.Data memory height,
+        int64 height,
         Commit.Data memory commit
     ) internal view returns (bool) {
         require(vals.validators.length == commit.signatures.length, "invalid commmit signatures");
 
-        require(height.eq(commit.height), "invalid commit height");
+        require(height == commit.height, "invalid commit height");
 
         require(commit.block_id.isEqual(blockID), "invalid commit -- wrong block ID");
 
@@ -291,10 +289,5 @@ library Tendermint {
         uint256 idx
     ) internal pure returns (bytes memory) {
         return Encoder.encodeDelim(voteSignBytes(commit, chainID, idx));
-    }
-
-    function checkAdjacency(Height.Data memory height1, Height.Data memory height2) private pure returns (bool) {
-        return height1.revision_number == height2.revision_number &&
-               height1.revision_height == height2.revision_height + 1;
     }
 }

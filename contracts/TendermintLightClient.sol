@@ -124,12 +124,12 @@ contract TendermintLightClient is IClient {
         // Check if the Client store already has a consensus state for the header's height
         // If the consensus state exists, and it matches the header then we return early
         // since header has already been submitted in a previous UpdateClient.
-	    (prevConsState, ok) = getConsensusState(host, clientId, tmHeader.signed_header.header.height);
+	    (prevConsState, ok) = getConsensusState(host, clientId, tmHeader.getHeight());
 	    if (ok) {
             // This header has already been submitted and the necessary state is already stored
             // in client store, thus we can return early without further validation.
             if (prevConsState.isEqual(tmHeader.toConsensusState())) {
-				return (clientStateBytes, marshalConsensusState(prevConsState), tmHeader.signed_header.header.height);
+				return (clientStateBytes, marshalConsensusState(prevConsState), tmHeader.getHeight());
             }
             // A consensus state already exists for this height, but it does not match the provided header.
             // Thus, we must check that this header is valid, and if so we will freeze the client.
@@ -146,19 +146,19 @@ contract TendermintLightClient is IClient {
 
 	    // Header is different from existing consensus state and also valid, so freeze the client and return
 	    if (conflictingHeader) {
-            clientState.frozen_height = tmHeader.signed_header.header.height;
+            clientState.frozen_height = tmHeader.getHeight();
             return (
                 marshalClientState(clientState),
                 marshalConsensusState(tmHeader.toConsensusState()),
-                tmHeader.signed_header.header.height
+                tmHeader.getHeight()
             );
 	    }
 
         // TODO: check consensus state monotonicity
 
         // update the consensus state from a new header and set processed time metadata
-        if (tmHeader.signed_header.header.height.gt(clientState.latest_height)) {
-            clientState.latest_height = tmHeader.signed_header.header.height;
+        if (tmHeader.getHeight().gt(clientState.latest_height)) {
+            clientState.latest_height = tmHeader.getHeight();
         }
 
         return (marshalClientState(clientState), marshalConsensusState(tmHeader.toConsensusState()), clientState.latest_height);
@@ -173,13 +173,13 @@ contract TendermintLightClient is IClient {
     ) private view {
 	    // assert header height is newer than consensus state
         require(
-            tmHeader.signed_header.header.height.gt(tmHeader.trusted_height),
+            tmHeader.getHeight().gt(tmHeader.trusted_height),
             "LC: header height consensus state height"
         );
 
         LightHeader.Data memory lc;
         lc.chain_id = clientState.chain_id;
-        lc.height = tmHeader.trusted_height;
+        lc.height = int64(tmHeader.trusted_height.revision_height);
         lc.time = trustedConsensusState.timestamp;
         lc.next_validators_hash = trustedConsensusState.next_validators_hash;
 
