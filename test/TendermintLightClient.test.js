@@ -55,6 +55,7 @@ async function ingest(h1, h2) {
       const TmHeader = root.lookupType('tendermint.light.TmHeader')
       const Fraction = root.lookupType('tendermint.light.Fraction')
       const Duration = root.lookupType('tendermint.light.Duration')
+      const Height = root.lookupType('Height')
 
       // core structs
       const [sh, vs] = await lib.readHeader(h1)
@@ -79,8 +80,14 @@ async function ingest(h1, h2) {
           seconds: 100000000000,
           nanos: 0
         }),
-        frozen_height: 0,
-        latest_height: sh.header.height,
+        frozen_height: Height.create({
+          revision_number: 0,
+          revision_height: 0
+        }),
+        latest_height: Height.create({
+          revision_number: 0,
+          revision_height: sh.header.height
+        }),
         allow_update_after_expiry: true,
         allow_update_after_misbehaviour: true
       })
@@ -120,7 +127,10 @@ async function ingest(h1, h2) {
       await lib.call(async () => {
         return await handler.createClient({
           clientType: '07-tendermint',
-          height: sh.header.height.low,
+          height: Height.create({
+            revision_number: 0,
+            revision_height: sh.header.height.low
+          }),
           clientStateBytes: encodedClientState,
           consensusStateBytes: encodedConsensusState
         })
@@ -135,7 +145,10 @@ async function ingest(h1, h2) {
         signed_header: ssh,
         validator_set: svs,
 
-        trusted_height: sh.header.height.low,
+        trusted_height: Height.create({
+          revision_number: 0,
+          revision_height: sh.header.height.low
+        }),
         trusted_validators: vs
       })
 
