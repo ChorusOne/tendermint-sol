@@ -28,7 +28,7 @@ config:
 
 .PHONY: test
 test:
-	truffle test --network tests
+	npx --no-install truffle test --network tests
 
 .PHONY: demo
 demo:
