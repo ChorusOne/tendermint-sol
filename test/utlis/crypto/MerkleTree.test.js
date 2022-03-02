@@ -19,11 +19,9 @@ contract('MerkleTreeMock', () => {
       for (d of protoIncludes) {
         p = path.join(d, target)
         if (fs.existsSync(p)) {
-          console.log(`found: ${p}`);
           return p;
         }
       }
-      console.log(`fallback: ${target}`);
       return protobuf.util.path.resolve(origin, target);
     }
 
