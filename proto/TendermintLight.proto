@@ -1,6 +1,8 @@
 syntax = "proto3";
 package tendermint.light;
 
+import "client/Client.proto";
+
 message Fraction {
   uint64 numerator = 1;
   uint64 denominator = 2;
@@ -30,9 +32,9 @@ message ClientState {
   Duration max_clock_drift = 5;
   // Block height when the client was frozen due to a misbehaviour
   //ibc.core.client.v1.Height frozen_height = 6;
-  int64 frozen_height = 6;
+  Height frozen_height = 6;
   // Latest height the client was updated to
-  int64 latest_height = 7;
+  Height latest_height = 7;
   // This flag, when set to true, will allow governance to recover a client
   // which has expired
   bool allow_update_after_expiry = 8;
@@ -152,6 +154,6 @@ message TmHeader {
   SignedHeader signed_header = 1;
   ValidatorSet validator_set = 2;
 
-  int64 trusted_height = 3;
+  Height trusted_height = 3;
   ValidatorSet trusted_validators = 4;
 }

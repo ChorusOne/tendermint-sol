@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@celo/contractkit": "^1.4.0",
+    "@hyperledger-labs/yui-ibc-solidity": "git+https://github.com/hyperledger-labs/yui-ibc-solidity.git#1449d800e41331d8994a33aacd026aa7b7b9176b",
     "@openzeppelin/contracts": "^4.3.2",
     "solidity-bytes-utils": "^0.8.0",
     "web3": "^1.6.1"
@@ -13,9 +14,11 @@
     "eslint-plugin-import": "^2.25.2",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^5.1.1",
+    "ganache-cli": "^6.12.2",
     "prettier": "^2.4.1",
     "prettier-plugin-solidity": "^1.0.0-beta.18",
     "protobufjs": "^6.11.2",
+    "truffle": "^5.4.31",
     "truffle-assertions": "^0.9.2"
   }
 }

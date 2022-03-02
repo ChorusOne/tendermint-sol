@@ -1,11 +1,29 @@
 const MerkleTreeMock = artifacts.require('MerkleTreeMock')
 const protobuf = require('protobufjs')
+const fs = require('fs')
+const path = require('path')
+
+const protoIncludes = [
+  './node_modules/protobufjs',
+  './node_modules/@hyperledger-labs/yui-ibc-solidity/proto',
+  './node_modules/@hyperledger-labs/yui-ibc-solidity/third_party/proto',
+  `${process.env.SOLPB_DIR}/protobuf-solidity/src/protoc/include`,
+];
 
 // TODO: use mainnet data
 contract('MerkleTreeMock', () => {
   it('verifies merkle root hash', async () => {
     const mock = await MerkleTreeMock.deployed()
     const root = new protobuf.Root()
+    root.resolvePath = (origin, target) => {
+      for (d of protoIncludes) {
+        p = path.join(d, target)
+        if (fs.existsSync(p)) {
+          return p;
+        }
+      }
+      return protobuf.util.path.resolve(origin, target);
+    }
 
     await root.load('./proto/TendermintLight.proto', { keepCase: true }).then(async function (root, err) {
       if (err) { throw err }

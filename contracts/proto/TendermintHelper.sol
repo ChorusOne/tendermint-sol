@@ -7,6 +7,7 @@ import "./Encoder.sol";
 import "../utils/Bytes.sol";
 import "../utils/crypto/MerkleTree.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/Client.sol";
 
 library TendermintHelper {
     using Bytes for bytes;
@@ -148,5 +149,9 @@ library TendermintHelper {
         }
 
         return vals.total_voting_power;
+    }
+
+    function getHeight(TmHeader.Data memory header) internal pure returns (Height.Data memory) {
+        return Height.Data(0, uint64(header.signed_header.header.height));
     }
 }

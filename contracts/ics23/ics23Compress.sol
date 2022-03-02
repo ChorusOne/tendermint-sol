@@ -1,7 +1,6 @@
-// SPDX-License-Identifier: TBD
 // Source: https://github.com/ChorusOne/ics23/tree/giulio/solidity
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.9;
 
 import {InnerOp, ExistenceProof, NonExistenceProof, CommitmentProof, CompressedBatchEntry, CompressedBatchProof, CompressedExistenceProof, BatchEntry, BatchProof} from "../proto/proofs.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";

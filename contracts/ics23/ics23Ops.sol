@@ -1,10 +1,9 @@
-// SPDX-License-Identifier: TBD
 // Source: https://github.com/ChorusOne/ics23/tree/giulio/solidity
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.9;
 
 import {LeafOp, InnerOp, PROOFS_PROTO_GLOBAL_ENUMS, ProofSpec} from "../proto/proofs.sol";
-import {ProtoBufRuntime} from "../proto/ProtoBufRuntime.sol";
+import {ProtoBufRuntime} from "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/ProtoBufRuntime.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {BytesLib} from "solidity-bytes-utils/contracts/BytesLib.sol";

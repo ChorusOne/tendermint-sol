@@ -17,11 +17,13 @@ import {
     InnerOp
 } from "./proto/proofs.sol";
 import "./proto/TendermintHelper.sol";
-import {GoogleProtobufAny as Any} from "./proto/GoogleProtobufAny.sol";
-import "./ibc/IClient.sol";
-import "./ibc/IBCHost.sol";
-import "./ibc/IBCMsgs.sol";
-import "./ibc/IBCIdentifier.sol";
+import {GoogleProtobufAny as Any} from "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/GoogleProtobufAny.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/IClient.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/IBCHost.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/IBCMsgs.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/IBCIdentifier.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/IBCHeight.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/Client.sol";
 import "./utils/Bytes.sol";
 import "./utils/Tendermint.sol";
 import "./ics23/ics23.sol";
@@ -33,6 +35,7 @@ contract TendermintLightClient is IClient {
     using TendermintHelper for TmHeader.Data;
     using TendermintHelper for ConsensusState.Data;
     using TendermintHelper for ValidatorSet.Data;
+    using IBCHeight for Height.Data;
 
     struct ProtoTypes {
         bytes32 clientState;
@@ -75,7 +78,7 @@ contract TendermintLightClient is IClient {
     function getTimestampAtHeight(
         IBCHost host,
         string memory clientId,
-        uint64 height
+        Height.Data memory height
     ) public override view returns (uint64, bool) {
         (ConsensusState.Data memory consensusState, bool found) = getConsensusState(host, clientId, height);
         if (!found) {
@@ -91,12 +94,12 @@ contract TendermintLightClient is IClient {
     function getLatestHeight(
         IBCHost host,
         string memory clientId
-    ) public override view returns (uint64, bool) {
+    ) public override view returns (Height.Data memory, bool) {
         (ClientState.Data memory clientState, bool found) = getClientState(host, clientId);
         if (!found) {
-            return (0, false);
+            return (Height.Data(0, 0), false);
         }
-        return (uint64(clientState.latest_height), true);
+        return (clientState.latest_height, true);
     }
 
     /**
@@ -107,7 +110,7 @@ contract TendermintLightClient is IClient {
         string memory clientId,
         bytes memory clientStateBytes,
         bytes memory headerBytes
-    ) public override view returns (bytes memory newClientStateBytes, bytes memory newConsensusStateBytes, uint64 height) {
+    ) public override view returns (bytes memory newClientStateBytes, bytes memory newConsensusStateBytes, Height.Data memory height) {
         TmHeader.Data memory tmHeader;
         ClientState.Data memory clientState;
         ConsensusState.Data memory trustedConsensusState;
@@ -121,19 +124,19 @@ contract TendermintLightClient is IClient {
         // Check if the Client store already has a consensus state for the header's height
         // If the consensus state exists, and it matches the header then we return early
         // since header has already been submitted in a previous UpdateClient.
-	    (prevConsState, ok) = getConsensusState(host, clientId, uint64(tmHeader.signed_header.header.height));
+	    (prevConsState, ok) = getConsensusState(host, clientId, tmHeader.getHeight());
 	    if (ok) {
             // This header has already been submitted and the necessary state is already stored
             // in client store, thus we can return early without further validation.
             if (prevConsState.isEqual(tmHeader.toConsensusState())) {
-				return (clientStateBytes, marshalConsensusState(prevConsState), uint64(tmHeader.signed_header.header.height));
+				return (clientStateBytes, marshalConsensusState(prevConsState), tmHeader.getHeight());
             }
             // A consensus state already exists for this height, but it does not match the provided header.
             // Thus, we must check that this header is valid, and if so we will freeze the client.
             conflictingHeader = true;
 	    }
 
-        (trustedConsensusState, ok) = getConsensusState(host, clientId, uint64(tmHeader.trusted_height));
+        (trustedConsensusState, ok) = getConsensusState(host, clientId, tmHeader.trusted_height);
         require(ok, "LC: consensusState not found at trusted height");
 
         (clientState, ok) = unmarshalClientState(clientStateBytes);
@@ -143,22 +146,22 @@ contract TendermintLightClient is IClient {
 
 	    // Header is different from existing consensus state and also valid, so freeze the client and return
 	    if (conflictingHeader) {
-            clientState.frozen_height = tmHeader.signed_header.header.height;
+            clientState.frozen_height = tmHeader.getHeight();
             return (
                 marshalClientState(clientState),
                 marshalConsensusState(tmHeader.toConsensusState()),
-                uint64(tmHeader.signed_header.header.height)
+                tmHeader.getHeight()
             );
 	    }
 
         // TODO: check consensus state monotonicity
 
         // update the consensus state from a new header and set processed time metadata
-        if (tmHeader.signed_header.header.height > clientState.latest_height) {
-            clientState.latest_height = tmHeader.signed_header.header.height;
+        if (tmHeader.getHeight().gt(clientState.latest_height)) {
+            clientState.latest_height = tmHeader.getHeight();
         }
 
-        return (marshalClientState(clientState), marshalConsensusState(tmHeader.toConsensusState()), uint64(clientState.latest_height));
+        return (marshalClientState(clientState), marshalConsensusState(tmHeader.toConsensusState()), clientState.latest_height);
     }
 
     // checkValidity checks if the Tendermint header is valid.
@@ -170,13 +173,13 @@ contract TendermintLightClient is IClient {
     ) private view {
 	    // assert header height is newer than consensus state
         require(
-            tmHeader.signed_header.header.height > tmHeader.trusted_height,
+            tmHeader.getHeight().gt(tmHeader.trusted_height),
             "LC: header height consensus state height"
         );
 
         LightHeader.Data memory lc;
         lc.chain_id = clientState.chain_id;
-        lc.height = tmHeader.trusted_height;
+        lc.height = int64(tmHeader.trusted_height.revision_height);
         lc.time = trustedConsensusState.timestamp;
         lc.next_validators_hash = trustedConsensusState.next_validators_hash;
 
@@ -204,7 +207,7 @@ contract TendermintLightClient is IClient {
     function verifyConnectionState(
         IBCHost host,
         string memory clientId,
-        uint64 height,
+        Height.Data memory height,
         bytes memory prefix,
         bytes memory proof,
         string memory connectionId,
@@ -231,7 +234,7 @@ contract TendermintLightClient is IClient {
     function verifyChannelState(
         IBCHost host,
         string memory clientId,
-        uint64 height,
+        Height.Data memory height,
         bytes memory prefix,
         bytes memory proof,
         string memory portId,
@@ -259,7 +262,7 @@ contract TendermintLightClient is IClient {
     function verifyPacketCommitment(
         IBCHost host,
         string memory clientId,
-        uint64 height,
+        Height.Data memory height,
         uint64 delayPeriodTime,
         uint64 delayPeriodBlocks,
         bytes memory prefix,
@@ -293,7 +296,7 @@ contract TendermintLightClient is IClient {
     function verifyPacketAcknowledgement(
         IBCHost host,
         string memory clientId,
-        uint64 height,
+        Height.Data memory height,
         uint64 delayPeriodTime,
         uint64 delayPeriodBlocks,
         bytes memory prefix,
@@ -319,7 +322,7 @@ contract TendermintLightClient is IClient {
     function verifyClientState(
         IBCHost host,
         string memory clientId,
-        uint64 height,
+        Height.Data memory height,
         bytes memory prefix,
         string memory counterpartyClientIdentifier,
         bytes memory proof,
@@ -346,9 +349,9 @@ contract TendermintLightClient is IClient {
     function verifyClientConsensusState(
         IBCHost host,
         string memory clientId,
-        uint64 height,
+        Height.Data memory height,
         string memory counterpartyClientIdentifier,
-        uint64 consensusHeight,
+        Height.Data memory consensusHeight,
         bytes memory prefix,
         bytes memory proof,
         bytes memory consensusStateBytes // serialized with pb
@@ -371,8 +374,8 @@ contract TendermintLightClient is IClient {
         return verifyMembership(proof, consensusState.merkle_root_hash.toBytes32(), prefix, IBCIdentifier.consensusStateCommitmentSlot(counterpartyClientIdentifier, consensusHeight), keccak256(consensusStateBytes));
     }
 
-    function validateArgs(ClientState.Data memory cs, uint64 height, bytes memory prefix, bytes memory proof) internal pure returns (bool) {
-        if (cs.latest_height < int64(height)) {
+    function validateArgs(ClientState.Data memory cs, Height.Data memory height, bytes memory prefix, bytes memory proof) internal pure returns (bool) {
+        if (cs.latest_height.lt(height)) {
             return false;
         } else if (prefix.length == 0) {
             return false;
@@ -382,7 +385,7 @@ contract TendermintLightClient is IClient {
         return true;
     }
 
-    function validateDelayPeriod(IBCHost host, string memory clientId, uint64 height, uint64 delayPeriodTime, uint64 delayPeriodBlocks) private view returns (bool) {
+    function validateDelayPeriod(IBCHost host, string memory clientId, Height.Data memory height, uint64 delayPeriodTime, uint64 delayPeriodBlocks) private view returns (bool) {
         uint64 currentTime = uint64(block.timestamp * 1000 * 1000 * 1000);
         uint64 validTime = mustGetProcessedTime(host, clientId, height) + delayPeriodTime;
         if (currentTime < validTime) {
@@ -404,19 +407,19 @@ contract TendermintLightClient is IClient {
     }
 
     // NOTE: this is a workaround to avoid the error `Stack too deep` in caller side
-    function mustGetConsensusState(IBCHost host, string memory clientId, uint64 height) internal view returns (ConsensusState.Data memory) {
+    function mustGetConsensusState(IBCHost host, string memory clientId, Height.Data memory height) internal view returns (ConsensusState.Data memory) {
         (ConsensusState.Data memory consensusState, bool found) = getConsensusState(host, clientId, height);
         require(found, "LC: consensus state not found");
         return consensusState;
     }
 
-    function mustGetProcessedTime(IBCHost host, string memory clientId, uint64 height) internal view returns (uint64) {
+    function mustGetProcessedTime(IBCHost host, string memory clientId, Height.Data memory height) internal view returns (uint64) {
         (uint256 processedTime, bool found) = host.getProcessedTime(clientId, height);
         require(found, "LC: processed time not found");
         return uint64(processedTime) * 1000 * 1000 * 1000;
     }
 
-    function mustGetProcessedHeight(IBCHost host, string memory clientId, uint64 height) internal view returns (uint64) {
+    function mustGetProcessedHeight(IBCHost host, string memory clientId, Height.Data memory height) internal view returns (uint64) {
         (uint256 processedHeight, bool found) = host.getProcessedHeight(clientId, height);
         require(found, "LC: processed height not found");
         return uint64(processedHeight);
@@ -431,7 +434,7 @@ contract TendermintLightClient is IClient {
         return (ClientState.decode(Any.decode(clientStateBytes).value), true);
     }
 
-    function getConsensusState(IBCHost host, string memory clientId, uint64 height) public view returns (ConsensusState.Data memory consensusState, bool found) {
+    function getConsensusState(IBCHost host, string memory clientId, Height.Data memory height) public view returns (ConsensusState.Data memory consensusState, bool found) {
         bytes memory consensusStateBytes;
         (consensusStateBytes, found) = host.getConsensusState(clientId, height);
         if (!found) {

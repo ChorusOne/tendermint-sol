@@ -1,8 +1,17 @@
 const TendermintLightClient = artifacts.require('TendermintLightClient')
-const IBCHandler = artifacts.require('IBCHandler')
-const IBCHost = artifacts.require('IBCHost')
+const IBCHandler = artifacts.require('@hyperledger-labs/yui-ibc-solidity/IBCHandler')
+const IBCHost = artifacts.require('@hyperledger-labs/yui-ibc-solidity/IBCHost')
 const protobuf = require('protobufjs')
 const lib = require('./lib.js')
+const fs = require('fs')
+const path = require('path')
+
+const protoIncludes = [
+  './node_modules/protobufjs',
+  './node_modules/@hyperledger-labs/yui-ibc-solidity/proto',
+  './node_modules/@hyperledger-labs/yui-ibc-solidity/third_party/proto',
+  `${process.env.SOLPB_DIR}/protobuf-solidity/src/protoc/include`,
+];
 
 contract('TendermintLightClient', () => {
   it('verifies ingestion of valid continuous headers', async () => {
@@ -16,6 +25,15 @@ contract('TendermintLightClient', () => {
 
 async function ingest(h1, h2) {
     const root = new protobuf.Root()
+    root.resolvePath = (origin, target) => {
+      for (d of protoIncludes) {
+        p = path.join(d, target)
+        if (fs.existsSync(p)) {
+          return p;
+        }
+      }
+      return protobuf.util.path.resolve(origin, target);
+    }
     let Any
 
     await root.load('test/data/any.proto', { keepCase: true }).then(async function (root, err) {
@@ -35,6 +53,7 @@ async function ingest(h1, h2) {
       const TmHeader = root.lookupType('tendermint.light.TmHeader')
       const Fraction = root.lookupType('tendermint.light.Fraction')
       const Duration = root.lookupType('tendermint.light.Duration')
+      const Height = root.lookupType('Height')
 
       // core structs
       const [sh, vs] = await lib.readHeader(h1)
@@ -59,8 +78,14 @@ async function ingest(h1, h2) {
           seconds: 100000000000,
           nanos: 0
         }),
-        frozen_height: 0,
-        latest_height: sh.header.height,
+        frozen_height: Height.create({
+          revision_number: 0,
+          revision_height: 0
+        }),
+        latest_height: Height.create({
+          revision_number: 0,
+          revision_height: sh.header.height
+        }),
         allow_update_after_expiry: true,
         allow_update_after_misbehaviour: true
       })
@@ -100,7 +125,10 @@ async function ingest(h1, h2) {
       await lib.call(async () => {
         return await handler.createClient({
           clientType: '07-tendermint',
-          height: sh.header.height.low,
+          height: Height.create({
+            revision_number: 0,
+            revision_height: sh.header.height.low
+          }),
           clientStateBytes: encodedClientState,
           consensusStateBytes: encodedConsensusState
         })
@@ -115,7 +143,10 @@ async function ingest(h1, h2) {
         signed_header: ssh,
         validator_set: svs,
 
-        trusted_height: sh.header.height.low,
+        trusted_height: Height.create({
+          revision_number: 0,
+          revision_height: sh.header.height.low
+        }),
         trusted_validators: vs
       })
 

@@ -1,6 +1,15 @@
 const ProtoMock = artifacts.require('ProtoMock')
 const protobuf = require('protobufjs')
 const lib = require('./lib.js')
+const fs = require('fs')
+const path = require('path')
+
+const protoIncludes = [
+  './node_modules/protobufjs',
+  './node_modules/@hyperledger-labs/yui-ibc-solidity/proto',
+  './node_modules/@hyperledger-labs/yui-ibc-solidity/third_party/proto',
+  `${process.env.SOLPB_DIR}/protobuf-solidity/src/protoc/include`,
+];
 
 contract('ProtoMock', () => {
   it('verifies TmHeader deserialization (with trusted_validator_set)', async () => {
@@ -14,6 +23,16 @@ contract('ProtoMock', () => {
 
 async function deserialize (h1, h2, with_trusted) {
   const root = new protobuf.Root()
+  root.resolvePath = (origin, target) => {
+    for (d of protoIncludes) {
+      p = path.join(d, target)
+      if (fs.existsSync(p)) {
+        return p;
+      }
+    }
+    return protobuf.util.path.resolve(origin, target);
+  }
+
   let Any
 
   await root.load('test/data/any.proto', { keepCase: true }).then(async function (root, err) {

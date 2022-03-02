@@ -3,7 +3,7 @@
 pragma solidity ^0.8.2;
 
 import { Validator } from "./TendermintLight.sol";
-import "./ProtoBufRuntime.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/core/types/ProtoBufRuntime.sol";
 
 library Encoder {
     uint64 private constant _MAX_UINT64 = 0xFFFFFFFFFFFFFFFF;
