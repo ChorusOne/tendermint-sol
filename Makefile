@@ -14,10 +14,6 @@ js-lint:
 sol-format:
 	npx prettier --write 'contracts/{utils,mocks}/*.sol' 'contracts/proto/{Encoder.sol,TendermintHelper.sol}'
 
-.PHONY: import-ibc
-import-ibc:
-	./scripts/import_ibc.sh
-
 .PHONY: import-ics23
 import-ics23:
 	./scripts/import_ics23.sh
